@@ -1,0 +1,38 @@
+const express = require("express")
+const mongoose = require("mongoose")
+const cors = require("cors")
+const projectEnergyRouter = require("./Router/energy/projectEnergyRouter.js")
+const projectWaterRouter = require("./Router/water/waterRouter")
+const EventRouter = require("./Router/event/eventRouter")
+const AssessmentRouter = require("./Router/assessmentRouter/assessmentRouter.js")
+
+const app = express()
+app.use(express.json())
+app.use(cors())
+require("dotenv").config()
+const path = require("path");
+
+//  mongoose.connect("mongodb://localhost:27017/Moewr_jubaland").then(() =>{
+//     console.log("success connection")
+// })
+
+
+mongoose.connect(process.env.db_url).then(() => console.log("connection is succesfully"))
+
+
+// ROUTER HALKAAN UGU WACDAY
+// app.use(projectEnergyRouter)
+app.use(projectEnergyRouter);
+app.use(projectWaterRouter);
+app.use(EventRouter);
+app.use(AssessmentRouter);
+
+// sida images loo soo aqristo
+
+app.use("/allimages", express.static("document"))
+
+// app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+//  app.listen(3000, () => console.log("server is running"))
+app.listen(process.env.port, () => console.log(`server is running`))
