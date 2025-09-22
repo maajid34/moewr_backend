@@ -5,8 +5,6 @@ const projectEnergyRouter = require("./Router/energy/projectEnergyRouter.js")
 const projectWaterRouter = require("./Router/water/waterRouter")
 const EventRouter = require("./Router/event/eventRouter")
 const AssessmentRouter = require("./Router/assessmentRouter/assessmentRouter.js")
-const { UPLOAD_ROOT } = require("./middleWare/uploadDocs");
-const { uploadImage, UPLOAD_DIR } = require("./middleWare/uploadImage");
 
 const app = express()
 app.use(express.json())
@@ -42,17 +40,10 @@ app.use(AssessmentRouter);
 
 // sida images loo soo aqristo
 
-// app.use("/allimages", express.static("document"))
-// server.js
-
-
-// serve the folder where Multer writes
-app.use("/allimages", express.static(UPLOAD_DIR)); // ✅ /tmp/document
-
+app.use("/allimages", express.static("document"))
 
 // app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
-app.use("/uploads/docs", express.static(UPLOAD_ROOT));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 //  app.listen(3000, () => console.log("server is running"))
 app.listen(process.env.port, () => console.log(`server is running`))
