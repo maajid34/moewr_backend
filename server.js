@@ -6,7 +6,7 @@ const projectWaterRouter = require("./Router/water/waterRouter")
 const EventRouter = require("./Router/event/eventRouter")
 const AssessmentRouter = require("./Router/assessmentRouter/assessmentRouter.js")
 const { UPLOAD_ROOT } = require("./middleWare/uploadDocs");
-const { UPLOAD_DIR } = require("./middleWare/uploadImage");
+const { uploadImage, UPLOAD_DIR } = require("./middleWare/uploadImage");
 
 const app = express()
 app.use(express.json())
