@@ -100,8 +100,8 @@ router.get(
 // -------------------achiemnets
 
 // admin login
-router.post("/createAdmin/Admin",AdminLogin.createAdmin)
-router.post("/customerLogin/Admin",AdminLogin.AminLogin)
+router.post("/createAdmin", AdminLogin.createAdmin);
+router.post("/customerLogin", AdminLogin.AminLogin);
 
 
 

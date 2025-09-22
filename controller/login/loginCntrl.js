@@ -3,55 +3,92 @@ const bcryptjs = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 
 
-const createAdmin = async (req,res) =>{
-    try {
+// const createAdmin = async (req,res) =>{
+//     try {
 
-        const {name,Email,Password} = req.body
+//         const {name,Email,Password} = req.body
 
-        const ExistEmail = await customerModel.findOne({Email})
+//         const ExistEmail = await customerModel.findOne({Email})
 
-        if(ExistEmail){
-            res.status(400).json({message:"exist Email"})
-        }
+//         if(ExistEmail){
+//             res.status(400).json({message:"exist Email"})
+//         }
 
-        // hash password
-        const hashPassword = await bcryptjs.hash(Password, 10)
-        const newData = new customerModel({
+//         // hash password
+//         const hashPassword = await bcryptjs.hash(Password, 10)
+//         const newData = new customerModel({
        
-      name, Email,Password: hashPassword
-    })
-        await newData.save()
-        res.send(newData)
-    } catch (error) {
-        console.error(error);
-        res.status(400).json({message: "server error"})
-    }
+//       name, Email,Password: hashPassword
+//     })
+//         await newData.save()
+//         res.send(newData)
+//     } catch (error) {
+//         console.log(error);
+//         res.status(400).json({message: "server error"})
+//     }
     
 
 
-}
+// }
+const createAdmin = async (req, res) => {
+  try {
+    // accept both "email" and "Email", "password" and "Password"
+    const name = (req.body.name || req.body.Name || "").trim();
+    const email = String(req.body.email ?? req.body.Email ?? "")
+      .trim()
+      .toLowerCase();
+    const password = String(req.body.password ?? req.body.Password ?? "");
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const exist = await customerModel.findOne({ email });
+    if (exist) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
+
+    const hash = await bcryptjs.hash(password, 10);
+
+    const user = await customerModel.create({
+      name: name || "Admin",
+      email,                 // <-- LOWERCASE field name
+      password: hash,        // <-- LOWERCASE field name
+      role: "admin",
+    });
+
+    return res.status(201).json({ ok: true, id: user._id });
+  } catch (e) {
+    // handle unique index error nicely
+    if (e?.code === 11000) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
+    console.error("CREATE ADMIN ERROR:", e);
+    return res.status(500).json({ message: "server error" });
+  }
+};
 
 const AminLogin = async(req,res) =>{
     try {
-        const{Email,Password} = req.body
+        const{email,password} = req.body
 
         // check email
          
-        const checkEmail = await customerModel.findOne({Email})
+        const checkEmail = await customerModel.findOne({email})
 
         if(!checkEmail){
           return   res.status(500).json({message:"inavlid Email"})
         }
 
         // check password
-        const checkPassword = await bcryptjs.compare(Password,checkEmail.Password)
+        const checkPassword = await bcryptjs.compare(password,checkEmail.password)
         if(!checkPassword){
            return res.status(500).json({message:"inavlid Password"})
         }
 
 
         const token = jwt.sign(
-            {id: checkEmail._id, name: checkEmail.name, Email: checkEmail.Email, role: checkEmail.role},
+            {id: checkEmail._id, name: checkEmail.name, Email: checkEmail.email, role: checkEmail.role},
         process.env.JWT_Secret,
         {expiresIn: "40s"}
         )
@@ -61,7 +98,7 @@ const AminLogin = async(req,res) =>{
             message: "Success login",
             Admin:{
                 name: checkEmail.name,
-                Email: checkEmail.Email,
+                Email: checkEmail.email,
                 role: checkEmail.role
                
                
@@ -74,5 +111,56 @@ const AminLogin = async(req,res) =>{
         res.status(400).json({message: "server error"})
     }
 }
+
+// const AminLogin = async (req, res) => {
+//   try {
+//     // accept both body styles
+//     const inputEmail = String(req.body.Email ?? req.body.email ?? "")
+//       .trim()
+//       .toLowerCase();
+//     const inputPass = String(req.body.Password ?? req.body.password ?? "");
+
+//     if (!inputEmail || !inputPass) {
+//       return res.status(400).json({ message: "Email and Password are required" });
+//     }
+
+//     // find a user whether it was saved as Email or email
+//     const user = await customerModel.findOne({
+//       $or: [{ Email: inputEmail }, { email: inputEmail }],
+//     });
+
+//     if (!user) {
+//       return res.status(401).json({ message: "Invalid Email or Password" });
+//     }
+
+//     // pick whichever password field exists
+//     const storedHash = user.Password || user.password;
+//     if (!storedHash) {
+//       // account was created without a password field – data is inconsistent
+//       return res.status(500).json({ message: "Account has no password set" });
+//     }
+
+//     const ok = await bcryptjs.compare(inputPass, storedHash);
+//     if (!ok) {
+//       return res.status(401).json({ message: "Invalid Email or Password" });
+//     }
+
+//     const token = jwt.sign(
+//       { id: user._id, name: user.name, Email: user.Email || user.email, role: user.role },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1d" }
+//     );
+
+//     return res.json({
+//       message: "Success login",
+//       Admin: { name: user.name, Email: user.Email || user.email, role: user.role },
+//       token,
+//     });
+//   } catch (err) {
+//     console.error("LOGIN ERROR:", err);
+//     return res.status(500).json({ message: "server error" });
+//   }
+// };
+
 
 module.exports ={createAdmin ,AminLogin}
