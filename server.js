@@ -8,9 +8,20 @@ const AssessmentRouter = require("./Router/assessmentRouter/assessmentRouter.js"
 
 const app = express()
 app.use(express.json())
-app.use(cors())
+// app.use(cors())
 require("dotenv").config()
 const path = require("path");
+
+app.use(cors({
+  origin: [
+    'https://moewr-frontend.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'https://moewr-jubalandstate.so',
+    'https://admin.moewr-jubalandstate.so',
+  ],
+  credentials: true,
+}));
 
 //  mongoose.connect("mongodb://localhost:27017/Moewr_jubaland").then(() =>{
 //     console.log("success connection")
