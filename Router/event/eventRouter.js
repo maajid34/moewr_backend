@@ -1,6 +1,10 @@
 const express = require("express");
 const projectEventCntrl = require("../../controller/event/eventCnrtl");
-const uploadImage = require("../../middleWare/aploadImage");
+// const uploadImage = require("../../middleWare/aploadImage");
+const {
+  uploadBuffer
+
+} = require("../../middleWare/aploadImage");
 // const AdminLogin = require("../../controller/login/loginCntrl");
 const { verifyToken, isAdmin } = require("../../middleWare/Auth");
 
@@ -8,7 +12,7 @@ const router = express.Router();
 
 router.post(
   "/createProjectEvent/Event",
-  uploadImage.fields([
+  uploadBuffer.fields([
     { name: "coverImage", maxCount: 1 },
     { name: "objectiveImage", maxCount: 1 },
   ]),
@@ -26,7 +30,7 @@ router.get("/readProjectEventSingal/Event/:id",projectEventCntrl.readEventById);
 
 router.patch(
   "/UpdateEvent/events/:id",
-  uploadImage.fields([
+  uploadBuffer.fields([
     { name: "coverImage", maxCount: 1 },
     { name: "objectiveImage", maxCount: 1 },
   ]),

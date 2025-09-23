@@ -18,6 +18,7 @@ const PhotoSchema = new mongoose.Schema(
   },
   { _id: false }                               
 );
+
 const WaterProjectSchema = new mongoose.Schema(
   {
     title: { type: String, unique: true, trim: true },
@@ -44,7 +45,7 @@ const WaterProjectSchema = new mongoose.Schema(
     stakeHolder3: { type: String },                 // logo 3
     stakeHolder4: { type: String },                 // logo 4
     achievements: [WaterachievementSchema],
-        Photos: [PhotoSchema],
+    Photos: [PhotoSchema],
         
   },
   { timestamps: true }

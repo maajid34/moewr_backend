@@ -1,6 +1,10 @@
 const express = require("express");
 const projectEnergyCntrl = require("../../controller/energy/energyProjectCntrl");
-const uploadImage = require("../../middleWare/aploadImage");
+// const uploadImage = require("../../middleWare/aploadImage");
+const {
+  uploadBuffer
+} = require("../../middleWare/aploadImage");
+
 const AdminLogin = require("../../controller/login/loginCntrl");
 const { verifyToken, isAdmin } = require("../../middleWare/Auth");
 
@@ -23,7 +27,7 @@ const router = express.Router();
 
 
 router.post("/createProjectEnergy/EnergyProject",
-  uploadImage.fields([
+   uploadBuffer.fields([
     { name: "coverImage", maxCount: 1 },
     { name: "objectiveImage", maxCount: 1 },
     { name: "GeographicImage", maxCount: 1 },
@@ -49,7 +53,7 @@ router.patch(
   "/UpdateEnergyProject/energy/:id",
   // verifyToken,
   // isAdmin,
-  uploadImage.fields([
+  uploadBuffer.fields([
     { name: "coverImage", maxCount: 1 },
     { name: "objectiveImage", maxCount: 1 },
    { name: "GeographicImage", maxCount: 1 },
@@ -109,13 +113,13 @@ router.post("/customerLogin", AdminLogin.AminLogin);
 // project photos ==========================
 router.post(
   "/energyProject/:id/photos",
-  uploadImage.fields([{ name: "photos", maxCount: 20 }, { name: "Photos", maxCount: 20 }]),
+  uploadBuffer.fields([{ name: "photos", maxCount: 20 }, { name: "Photos", maxCount: 20 }]),
   projectEnergyCntrl.PostProjectPhotos
 );
 
 router.put(
   "/energyProject/:id/photos",
-  uploadImage.fields([{ name: "photos", maxCount: 20 }, { name: "Photos", maxCount: 20 }]),
+  uploadBuffer.fields([{ name: "photos", maxCount: 20 }, { name: "Photos", maxCount: 20 }]),
   projectEnergyCntrl.UpdateProjectPhotos
 );
 

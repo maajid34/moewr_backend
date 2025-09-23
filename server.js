@@ -1,3 +1,4 @@
+require("dotenv").config()
 const express = require("express")
 const mongoose = require("mongoose")
 const cors = require("cors")
@@ -5,12 +6,16 @@ const projectEnergyRouter = require("./Router/energy/projectEnergyRouter.js")
 const projectWaterRouter = require("./Router/water/waterRouter")
 const EventRouter = require("./Router/event/eventRouter")
 const AssessmentRouter = require("./Router/assessmentRouter/assessmentRouter.js")
+const uploadRoutes = require("./Router/uploadRouter/uploadRouter.js");
 
 const app = express()
 app.use(express.json())
 // app.use(cors())
-require("dotenv").config()
+
 const path = require("path");
+
+
+
 
 app.use(cors({
   origin: [
@@ -40,10 +45,14 @@ app.use(AssessmentRouter);
 
 // sida images loo soo aqristo
 
-app.use("/allimages", express.static("document"))
+// app.use("/allimages", express.static("document"))
+app.use("/upload", uploadRoutes);
 
 // app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 //  app.listen(3000, () => console.log("server is running"))
 app.listen(process.env.port, () => console.log(`server is running`))
+
+
+// lates sarevr

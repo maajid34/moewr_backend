@@ -1,46 +1,170 @@
 const EnergyProject = require("../../modules/energy/energyProject");
+const { makeObjectKey, putImageToR2, buildPublicUrl } = require("../../middleWare/aploadImage");
 const mongoose = require("mongoose")
 
 
 
 
+// const createProjectEnergy = async (req, res) => {
+//   try {
+//     const files = req.files || {};
+//     const coverFile = files.coverImage?.[0] || req.file; // support single()
+//     const objectiveFile = files.objectiveImage?.[0];
+//     const geographicFile = files.GeographicImage?.[0];
+
+//     // stakeholder logos (keep both spellings for backward-compat)
+//     const holder1File = files.stackeHolder1?.[0];
+//     const holder2File = files.stakeHolder2?.[0];
+//     const holder3File = files.stakeHolder3?.[0];
+//     const holder4File = files.stakeHolder4?.[0];
+
+//     // Parse achievements
+//     let achievementsInput = req.body.achievements || req.body.achievementTitle || [];
+//     if (typeof achievementsInput === "string") {
+//       try { achievementsInput = JSON.parse(achievementsInput); } catch { achievementsInput = []; }
+//     }
+//     if (!Array.isArray(achievementsInput)) achievementsInput = [];
+
+//     // Parse Photos from files (accept "photos" or "Photos")
+//     const photoFiles = files.photos || files.Photos || [];
+//     const Photos = photoFiles.map(f => ({ Image: f.filename || f.path }));
+
+//     const project = new EnergyProject({
+//       title: req.body.title,
+//       desc: req.body.desc,
+//       overview: req.body.overview,
+
+//       coverImage: coverFile ? (coverFile.filename || coverFile.path) : "",
+//       objectiveImage: objectiveFile ? (objectiveFile.filename || objectiveFile.path) : "",
+//       GeographicImage: geographicFile ? (geographicFile.filename || geographicFile.path) : "",
+
+//       stackeHolder1: holder1File ? (holder1File.filename || holder1File.path) : "",
+//       stakeHolder2: holder2File ? (holder2File.filename || holder2File.path) : "",
+//       stakeHolder3: holder3File ? (holder3File.filename || holder3File.path) : "",
+//       stakeHolder4: holder4File ? (holder4File.filename || holder4File.path) : "",
+
+//       objective: req.body.objective,
+//       geogrpahic: req.body.geogrpahic,
+//       componentTitle: req.body.componentTitle,
+//       componentOne: req.body.componentOne,
+//       componentTwo: req.body.componentTwo,
+//       componentThree: req.body.componentThree,
+//       componentFour: req.body.componentFour,
+
+//       achievements: achievementsInput,
+//       Photos, // ⬅️ save photos array if sent
+//     });
+
+//     // Ensure coverImage present (schema requires it)
+//     if (!project.coverImage) {
+//       return res.status(400).json({ message: "coverImage is required" });
+//     }
+
+//     const saved = await project.save();
+//     res.status(201).json(saved);
+//   } catch (err) {
+//     console.error("createProjectEnergy error:", err);
+//     // Handle duplicate title nicely
+//     if (err?.code === 11000) {
+//       return res.status(409).json({ message: "Title already exists" });
+//     }
+//     res.status(500).json({ message: "Failed to create project" });
+//   }
+// };
+
+
+// lates createproject
+
+
+
 const createProjectEnergy = async (req, res) => {
   try {
-    const files = req.files || {};
-    const coverFile = files.coverImage?.[0] || req.file; // support single()
-    const objectiveFile = files.objectiveImage?.[0];
-    const geographicFile = files.GeographicImage?.[0];
-
-    // stakeholder logos (keep both spellings for backward-compat)
-    const holder1File = files.stackeHolder1?.[0];
-    const holder2File = files.stakeHolder2?.[0];
-    const holder3File = files.stakeHolder3?.[0];
-    const holder4File = files.stakeHolder4?.[0];
-
-    // Parse achievements
-    let achievementsInput = req.body.achievements || req.body.achievementTitle || [];
-    if (typeof achievementsInput === "string") {
-      try { achievementsInput = JSON.parse(achievementsInput); } catch { achievementsInput = []; }
+    // Normalize req.files to { field: [files] }
+    let filesByField;
+    if (Array.isArray(req.files)) {
+      filesByField = {};
+      for (const f of req.files) (filesByField[f.fieldname] ||= []).push(f);
+    } else {
+      filesByField = req.files || {};
     }
-    if (!Array.isArray(achievementsInput)) achievementsInput = [];
 
-    // Parse Photos from files (accept "photos" or "Photos")
-    const photoFiles = files.photos || files.Photos || [];
-    const Photos = photoFiles.map(f => ({ Image: f.filename || f.path }));
+    const coverFile      = filesByField.coverImage?.[0];
+    const objectiveFile  = filesByField.objectiveImage?.[0];
+    const geographicFile = filesByField.GeographicImage?.[0];
 
-    const project = new EnergyProject({
-      title: req.body.title,
+    // accept both spellings for stakeholder #1
+    const holder1File = (filesByField.stackeHolder1?.[0] || filesByField.stakeHolder1?.[0]) || undefined;
+    const holder2File = filesByField.stakeHolder2?.[0];
+    const holder3File = filesByField.stakeHolder3?.[0];
+    const holder4File = filesByField.stakeHolder4?.[0];
+
+    if (!coverFile) {
+      return res.status(400).json({ message: "coverImage file is required" });
+    }
+
+    // --- Upload required/optional images to R2 ---
+    const coverKey = makeObjectKey(coverFile.originalname, "energy/cover");
+    await putImageToR2(coverFile.buffer, coverFile.mimetype, coverKey);
+    const coverUrl = buildPublicUrl(coverKey);
+
+    let objectiveUrl, geographicUrl, holder1Url, holder2Url, holder3Url, holder4Url;
+
+    if (objectiveFile) {
+      const k = makeObjectKey(objectiveFile.originalname, "energy/objective");
+      await putImageToR2(objectiveFile.buffer, objectiveFile.mimetype, k);
+      objectiveUrl = buildPublicUrl(k);
+    }
+
+    if (geographicFile) {
+      const k = makeObjectKey(geographicFile.originalname, "energy/geographic");
+      await putImageToR2(geographicFile.buffer, geographicFile.mimetype, k);
+      geographicUrl = buildPublicUrl(k);
+    }
+
+    if (holder1File) {
+      const k = makeObjectKey(holder1File.originalname, "energy/stakeholders");
+      await putImageToR2(holder1File.buffer, holder1File.mimetype, k);
+      holder1Url = buildPublicUrl(k);
+    }
+    if (holder2File) {
+      const k = makeObjectKey(holder2File.originalname, "energy/stakeholders");
+      await putImageToR2(holder2File.buffer, holder2File.mimetype, k);
+      holder2Url = buildPublicUrl(k);
+    }
+    if (holder3File) {
+      const k = makeObjectKey(holder3File.originalname, "energy/stakeholders");
+      await putImageToR2(holder3File.buffer, holder3File.mimetype, k);
+      holder3Url = buildPublicUrl(k);
+    }
+    if (holder4File) {
+      const k = makeObjectKey(holder4File.originalname, "energy/stakeholders");
+      await putImageToR2(holder4File.buffer, holder4File.mimetype, k);
+      holder4Url = buildPublicUrl(k);
+    }
+
+    // Photos (accept both "photos" and "Photos")
+    const photoFiles = [...(filesByField.photos || []), ...(filesByField.Photos || [])];
+    const Photos = [];
+    for (const f of photoFiles) {
+      const k = makeObjectKey(f.originalname, "energy/photos");
+      await putImageToR2(f.buffer, f.mimetype, k);
+      Photos.push({ Image: buildPublicUrl(k) });
+    }
+
+    // --- Build payload (store URLs) ---
+    const payload = {
+      title: (req.body.title || "").trim(),
       desc: req.body.desc,
       overview: req.body.overview,
 
-      coverImage: coverFile ? (coverFile.filename || coverFile.path) : "",
-      objectiveImage: objectiveFile ? (objectiveFile.filename || objectiveFile.path) : "",
-      GeographicImage: geographicFile ? (geographicFile.filename || geographicFile.path) : "",
+      coverImage: coverUrl,
+      objectiveImage: objectiveUrl,
+      GeographicImage: geographicUrl,
 
-      stackeHolder1: holder1File ? (holder1File.filename || holder1File.path) : "",
-      stakeHolder2: holder2File ? (holder2File.filename || holder2File.path) : "",
-      stakeHolder3: holder3File ? (holder3File.filename || holder3File.path) : "",
-      stakeHolder4: holder4File ? (holder4File.filename || holder4File.path) : "",
+      stackeHolder1: holder1Url, // keep legacy field name in schema
+      stakeHolder2: holder2Url,
+      stakeHolder3: holder3Url,
+      stakeHolder4: holder4Url,
 
       objective: req.body.objective,
       geogrpahic: req.body.geogrpahic,
@@ -50,24 +174,24 @@ const createProjectEnergy = async (req, res) => {
       componentThree: req.body.componentThree,
       componentFour: req.body.componentFour,
 
-      achievements: achievementsInput,
-      Photos, // ⬅️ save photos array if sent
-    });
+      // achievements (array or JSON string)
+      achievements: (() => {
+        let a = req.body.achievements ?? req.body.achievementTitle ?? [];
+        if (typeof a === "string") { try { a = JSON.parse(a); } catch { a = []; } }
+        return Array.isArray(a) ? a : [];
+      })(),
 
-    // Ensure coverImage present (schema requires it)
-    if (!project.coverImage) {
-      return res.status(400).json({ message: "coverImage is required" });
-    }
+      Photos,
+    };
 
-    const saved = await project.save();
-    res.status(201).json(saved);
+    const saved = await new EnergyProject(payload).save();
+    return res.status(201).json(saved);
   } catch (err) {
     console.error("createProjectEnergy error:", err);
-    // Handle duplicate title nicely
     if (err?.code === 11000) {
       return res.status(409).json({ message: "Title already exists" });
     }
-    res.status(500).json({ message: "Failed to create project" });
+    return res.status(500).json({ message: "Failed to create project" });
   }
 };
 
@@ -96,76 +220,163 @@ const readSignleProjectEnergy = async (req, res) => {
 
 
 // update
+// const updateEnergyProject = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     if (!mongoose.isValidObjectId(id)) {
+//       return res.status(400).json({ error: "Invalid project id format" });
+//     }
+
+//     const files = req.files || {};
+//     const coverFile = files.coverImage?.[0] || req.file;
+//     const objectiveFile = files.objectiveImage?.[0];
+//     const geographicFile = files.GeographicImage?.[0];
+
+//     const holder1File = files.stackeHolder1?.[0];
+//     const holder2File = files.stakeHolder2?.[0];
+//     const holder3File = files.stakeHolder3?.[0];
+//     const holder4File = files.stakeHolder4?.[0];
+
+//     // optional incoming photos to append
+//     const photoFiles = files.photos || files.Photos || [];
+//     const photosToAppend = photoFiles.map(f => ({ Image: f.filename || f.path }));
+
+//     // Build safe update doc (don’t touch achievements here)
+//     const update = {};
+//     const fields = [
+//       "title","desc","overview",
+//       "objective","geogrpahic",
+//       "componentTitle","componentOne","componentTwo","componentThree","componentFour",
+//       "stackeHolder1","stakeHolder2","stakeHolder3","stakeHolder4",
+//     ];
+//     for (const f of fields) {
+//       if (req.body[f] !== undefined) update[f] = req.body[f];
+//     }
+
+//     if (coverFile)      update.coverImage     = coverFile.filename     || coverFile.path     || "";
+//     if (objectiveFile)  update.objectiveImage = objectiveFile.filename || objectiveFile.path || "";
+//     if (geographicFile) update.GeographicImage = geographicFile.filename || geographicFile.path || "";
+//     if (holder1File)    update.stackeHolder1  = holder1File.filename   || holder1File.path   || "";
+//     if (holder2File)    update.stakeHolder2   = holder2File.filename   || holder2File.path   || "";
+//     if (holder3File)    update.stakeHolder3   = holder3File.filename   || holder3File.path   || "";
+//     if (holder4File)    update.stakeHolder4   = holder4File.filename   || holder4File.path   || "";
+
+//     // If no photos to append, do a normal update
+//     if (!photosToAppend.length) {
+//       const project = await EnergyProject.findByIdAndUpdate(id, update, {
+//         new: true,
+//         runValidators: true,
+//         projection: "-achievements",
+//       });
+//       if (!project) return res.status(404).json({ message: "Project not found" });
+//       return res.json({ message: "Project updated", project });
+//     }
+
+//     // If there ARE photos, append them in the same call
+//     const project = await EnergyProject.findByIdAndUpdate(
+//       id,
+//       {
+//         ...(Object.keys(update).length ? { $set: update } : {}),
+//         $push: { Photos: { $each: photosToAppend } },
+//       },
+//       { new: true, runValidators: true, projection: "-achievements" }
+//     );
+
+//     if (!project) return res.status(404).json({ message: "Project not found" });
+//     return res.json({ message: "Project updated (photos appended)", project });
+//   } catch (err) {
+//     console.error("updateEnergyProject error:", err);
+//     return res.status(500).json({ error: "Failed to update project" });
+//   }
+// };
+
+// lates update
 const updateEnergyProject = async (req, res) => {
   try {
     const { id } = req.params;
-
     if (!mongoose.isValidObjectId(id)) {
-      return res.status(400).json({ error: "Invalid project id format" });
+      return res.status(400).json({ message: "Invalid project id format" });
     }
 
-    const files = req.files || {};
-    const coverFile = files.coverImage?.[0] || req.file;
-    const objectiveFile = files.objectiveImage?.[0];
-    const geographicFile = files.GeographicImage?.[0];
+    // --- normalize req.files -> { field: [files] } ---
+    let filesByField;
+    if (Array.isArray(req.files)) {
+      filesByField = {};
+      for (const f of req.files) (filesByField[f.fieldname] ||= []).push(f);
+    } else {
+      filesByField = req.files || {};
+    }
 
-    const holder1File = files.stackeHolder1?.[0];
-    const holder2File = files.stakeHolder2?.[0];
-    const holder3File = files.stakeHolder3?.[0];
-    const holder4File = files.stakeHolder4?.[0];
+    const coverFile      = filesByField.coverImage?.[0];
+    const objectiveFile  = filesByField.objectiveImage?.[0];
+    const geographicFile = filesByField.GeographicImage?.[0];
 
-    // optional incoming photos to append
-    const photoFiles = files.photos || files.Photos || [];
-    const photosToAppend = photoFiles.map(f => ({ Image: f.filename || f.path }));
+    // accept both spellings for stakeholder #1
+    const holder1File = (filesByField.stackeHolder1?.[0] || filesByField.stakeHolder1?.[0]) || undefined;
+    const holder2File = filesByField.stakeHolder2?.[0];
+    const holder3File = filesByField.stakeHolder3?.[0];
+    const holder4File = filesByField.stakeHolder4?.[0];
 
-    // Build safe update doc (don’t touch achievements here)
-    const update = {};
+    const uploadOne = async (file, folder) => {
+      const key = makeObjectKey(file.originalname, folder);
+      await putImageToR2(file.buffer, file.mimetype, key);
+      return buildPublicUrl(key);
+    };
+
+    // --- text fields (update only what was provided) ---
+    const set = {};
     const fields = [
       "title","desc","overview",
       "objective","geogrpahic",
       "componentTitle","componentOne","componentTwo","componentThree","componentFour",
-      "stackeHolder1","stakeHolder2","stakeHolder3","stakeHolder4",
     ];
-    for (const f of fields) {
-      if (req.body[f] !== undefined) update[f] = req.body[f];
+    for (const f of fields) if (req.body[f] !== undefined) set[f] = req.body[f];
+
+    // --- upload any new single-file fields ---
+    if (coverFile)      set.coverImage      = await uploadOne(coverFile,      "energy/cover");
+    if (objectiveFile)  set.objectiveImage  = await uploadOne(objectiveFile,  "energy/objective");
+    if (geographicFile) set.GeographicImage = await uploadOne(geographicFile, "energy/geographic");
+
+    if (holder1File) set.stackeHolder1 = await uploadOne(holder1File, "energy/stakeholders");
+    if (holder2File) set.stakeHolder2  = await uploadOne(holder2File, "energy/stakeholders");
+    if (holder3File) set.stakeHolder3  = await uploadOne(holder3File, "energy/stakeholders");
+    if (holder4File) set.stakeHolder4  = await uploadOne(holder4File, "energy/stakeholders");
+
+    // --- photos append (accept both "photos" and "Photos") ---
+    const photoFiles = [...(filesByField.photos || []), ...(filesByField.Photos || [])];
+    const photosToAppend = [];
+    for (const f of photoFiles) {
+      const url = await uploadOne(f, "energy/photos");
+      photosToAppend.push({ Image: url });
     }
 
-    if (coverFile)      update.coverImage     = coverFile.filename     || coverFile.path     || "";
-    if (objectiveFile)  update.objectiveImage = objectiveFile.filename || objectiveFile.path || "";
-    if (geographicFile) update.GeographicImage = geographicFile.filename || geographicFile.path || "";
-    if (holder1File)    update.stackeHolder1  = holder1File.filename   || holder1File.path   || "";
-    if (holder2File)    update.stakeHolder2   = holder2File.filename   || holder2File.path   || "";
-    if (holder3File)    update.stakeHolder3   = holder3File.filename   || holder3File.path   || "";
-    if (holder4File)    update.stakeHolder4   = holder4File.filename   || holder4File.path   || "";
+    // --- build update document ---
+    const updateDoc = {};
+    if (Object.keys(set).length) updateDoc.$set = set;
+    if (photosToAppend.length) updateDoc.$push = { Photos: { $each: photosToAppend } };
 
-    // If no photos to append, do a normal update
-    if (!photosToAppend.length) {
-      const project = await EnergyProject.findByIdAndUpdate(id, update, {
-        new: true,
-        runValidators: true,
-        projection: "-achievements",
-      });
-      if (!project) return res.status(404).json({ message: "Project not found" });
-      return res.json({ message: "Project updated", project });
+    // If nothing changed, return current doc
+    if (!Object.keys(updateDoc).length) {
+      const current = await EnergyProject.findById(id);
+      if (!current) return res.status(404).json({ message: "Project not found" });
+      return res.json({ message: "No changes supplied", project: current });
     }
 
-    // If there ARE photos, append them in the same call
-    const project = await EnergyProject.findByIdAndUpdate(
-      id,
-      {
-        ...(Object.keys(update).length ? { $set: update } : {}),
-        $push: { Photos: { $each: photosToAppend } },
-      },
-      { new: true, runValidators: true, projection: "-achievements" }
-    );
+    const project = await EnergyProject.findByIdAndUpdate(id, updateDoc, {
+      new: true,
+      runValidators: true,
+      projection: "-achievements",
+    });
 
     if (!project) return res.status(404).json({ message: "Project not found" });
-    return res.json({ message: "Project updated (photos appended)", project });
+    return res.json({ message: "Project updated", project });
   } catch (err) {
     console.error("updateEnergyProject error:", err);
-    return res.status(500).json({ error: "Failed to update project" });
+    return res.status(500).json({ message: "Failed to update project" });
   }
 };
+
 
 
 /**
