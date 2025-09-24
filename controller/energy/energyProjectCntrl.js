@@ -579,54 +579,195 @@ const readSingleEnergyAchievement = async (req, res) => {
 
 // project photos============================================================
 
+// const PostProjectPhotos = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid project id format" });
+
+//     const files = req.files || {};
+//     const photoFiles = files.photos || files.Photos || (req.file ? [req.file] : []);
+//     if (!photoFiles.length) return res.status(400).json({ error: "No photos uploaded" });
+
+//     const photosToAppend = photoFiles.map(f => ({ Image: f.filename || f.path }));
+
+//     const project = await EnergyProject.findByIdAndUpdate(
+//       id,
+//       { $push: { Photos: { $each: photosToAppend } } },
+//       { new: true, runValidators: true }
+//     );
+//     if (!project) return res.status(404).json({ message: "Project not found" });
+
+//     res.json({ message: "Photos appended", project });
+//   } catch (err) {
+//     console.error("appendProjectPhotos error:", err);
+//     res.status(500).json({ error: "Failed to append photos" });
+//   }
+// };
+
 const PostProjectPhotos = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid project id format" });
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid project id format" });
+    }
 
-    const files = req.files || {};
-    const photoFiles = files.photos || files.Photos || (req.file ? [req.file] : []);
-    if (!photoFiles.length) return res.status(400).json({ error: "No photos uploaded" });
+    // ---- normalize files (array or fields) ----
+    let photoFiles = [];
+    if (Array.isArray(req.files)) {
+      photoFiles = req.files; // upload.array('photos')
+    } else if (req.files?.photos) {
+      photoFiles = req.files.photos; // upload.fields([{ name: 'photos' }])
+    } else if (req.files?.Photos) {
+      photoFiles = req.files.Photos;
+    } else if (req.file) {
+      photoFiles = [req.file];
+    }
 
-    const photosToAppend = photoFiles.map(f => ({ Image: f.filename || f.path }));
+    if (!photoFiles.length) {
+      return res.status(400).json({ error: "No photos uploaded" });
+    }
+
+    // ---- get a URL for each uploaded file ----
+    // If you're using memoryStorage + R2: use buffer/originalname/mimetype
+    // Otherwise fall back to existing path/location fields.
+    const toUrl = async (f) => {
+      // S3-like or disk-like storages with ready-made URLs/paths
+      const ready =
+        f?.location || f?.Location || f?.path || f?.filepath || f?.url || f?.URL;
+      if (ready) return ready; // already a public/serving path
+
+      // memory storage: must upload to R2 (same helpers you use in createProjectEnergy)
+      if (f?.buffer && f?.originalname && f?.mimetype) {
+        const key = makeObjectKey(f.originalname, "energy/photos");
+        await putImageToR2(f.buffer, f.mimetype, key);
+        return buildPublicUrl(key); // e.g. "https://r2-bucket/energy/photos/..."
+      }
+
+      // some storages provide key/filename only
+      if (f?.key || f?.Key || f?.filename) {
+        const k = f.key || f.Key || `energy/photos/${f.filename}`;
+        // if that key is not public, you could: return buildPublicUrl(k);
+        return buildPublicUrl(k);
+      }
+
+      return ""; // nothing usable
+    };
+
+    const urls = [];
+    for (const f of photoFiles) {
+      const url = await toUrl(f);
+      if (url) urls.push(url);
+    }
+
+    if (!urls.length) {
+      return res.status(400).json({ error: "Could not resolve file paths for uploads" });
+    }
+
+    // ---- persist: your schema uses objects { Image: String } ----
+    const docs = urls.map((u) => ({ Image: u }));
 
     const project = await EnergyProject.findByIdAndUpdate(
       id,
-      { $push: { Photos: { $each: photosToAppend } } },
+      { $push: { Photos: { $each: docs } } },
       { new: true, runValidators: true }
     );
-    if (!project) return res.status(404).json({ message: "Project not found" });
 
-    res.json({ message: "Photos appended", project });
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    return res.json({ message: "Photos appended", count: docs.length, project });
   } catch (err) {
-    console.error("appendProjectPhotos error:", err);
-    res.status(500).json({ error: "Failed to append photos" });
+    console.error("appendEnergyProjectPhotos error:", err);
+    return res.status(500).json({ error: "Failed to append photos" });
   }
 };
 
 // Replace ALL photos (dangerous): overwrites Photos[]
+// const UpdateProjectPhotos = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid project id format" });
+
+//     const files = req.files || {};
+//     const photoFiles = files.photos || files.Photos || (req.file ? [req.file] : []);
+//     const newPhotos = photoFiles.map(f => ({ Image: f.filename || f.path }));
+
+//     const project = await EnergyProject.findByIdAndUpdate(
+//       id,
+//       { $set: { Photos: newPhotos } },
+//       { new: true, runValidators: true }
+//     );
+//     if (!project) return res.status(404).json({ message: "Project not found" });
+
+//     res.json({ message: "Photos replaced", project });
+//   } catch (err) {
+//     console.error("replaceProjectPhotos error:", err);
+//     res.status(500).json({ error: "Failed to replace photos" });
+//   }
+// };
+
 const UpdateProjectPhotos = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: "Invalid project id format" });
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({ error: "Invalid project id format" });
+    }
 
-    const files = req.files || {};
-    const photoFiles = files.photos || files.Photos || (req.file ? [req.file] : []);
-    const newPhotos = photoFiles.map(f => ({ Image: f.filename || f.path }));
+    // normalize files
+    let photoFiles = [];
+    if (Array.isArray(req.files)) {
+      photoFiles = req.files; // upload.array('photos')
+    } else if (req.files?.photos) {
+      photoFiles = req.files.photos;
+    } else if (req.files?.Photos) {
+      photoFiles = req.files.Photos;
+    } else if (req.file) {
+      photoFiles = [req.file];
+    }
 
+    if (!photoFiles.length) {
+      return res.status(400).json({ error: "No photos uploaded" });
+    }
+
+    // upload each photo to R2 and build URLs
+    const uploaded = [];
+    for (const f of photoFiles) {
+      let url;
+      if (f.buffer && f.originalname && f.mimetype) {
+        const key = makeObjectKey(f.originalname, "energy/photos");
+        await putImageToR2(f.buffer, f.mimetype, key);
+        url = buildPublicUrl(key);
+      } else if (f.location || f.Location) {
+        url = f.location || f.Location;
+      } else if (f.path) {
+        url = f.path;
+      }
+      if (url) uploaded.push({ Image: url });
+    }
+
+    if (!uploaded.length) {
+      return res.status(400).json({ error: "Could not resolve file paths for uploads" });
+    }
+
+    // replace old photos with new ones
     const project = await EnergyProject.findByIdAndUpdate(
       id,
-      { $set: { Photos: newPhotos } },
+      { $set: { Photos: uploaded } },
       { new: true, runValidators: true }
     );
-    if (!project) return res.status(404).json({ message: "Project not found" });
 
-    res.json({ message: "Photos replaced", project });
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({ message: "Photos replaced", count: uploaded.length, project });
   } catch (err) {
     console.error("replaceProjectPhotos error:", err);
     res.status(500).json({ error: "Failed to replace photos" });
   }
 };
+
 
 // read
 const ReadProjectPhotos = async (req, res) => {

@@ -1,6 +1,6 @@
 const DocumentFile = require("../../modules/assesmentsModule/assessmentModule");
 
-const API_BASE = process.env.API_BASE || "http://localhost:3000";
+const API_BASE = process.env.API_BASE || "https://moewr-backend.onrender.com";
 
 // helper: attach fileUrl to a doc (plain object)
 function withFileUrl(doc) {
