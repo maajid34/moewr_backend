@@ -70,14 +70,17 @@
 
 // module.exports = { upload, attachWebPath };
 
-
 // middleWare/uploadDocs.js
 const multer = require("multer");
 const path = require("path");
 const crypto = require("crypto");
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
 
-// -------- utils --------
+// ---------------- allowed types (PDF/Office) ----------------
 const allowed = new Set([
   "application/pdf",
   "application/msword",
@@ -88,28 +91,42 @@ const allowed = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ]);
 
+// ---------------- utils ----------------
 function normalizeCategory(raw) {
-  return (raw || "general").toLowerCase().trim().replace(/[^a-z0-9_-]/g, "_");
+  return (raw || "general")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]/g, "_");
 }
 
 function makeObjectKey(originalName, category) {
   const folder = `docs/${normalizeCategory(category)}`;
   const ext = (path.extname(originalName) || "").toLowerCase();
-  const base = path
-    .basename(originalName, ext)
-    .replace(/[^a-z0-9-_]/gi, "_")
-    .slice(0, 60) || "file";
+  const base =
+    path
+      .basename(originalName, ext)
+      .replace(/[^a-z0-9-_]/gi, "_")
+      .slice(0, 60) || "file";
   const rand = crypto.randomBytes(6).toString("hex");
   return `${folder}/${Date.now()}_${base}_${rand}${ext || ".bin"}`;
 }
 
+/**
+ * Build a public URL for clients.
+ * NOTE:
+ *   - When using Cloudflare R2 with a public bucket via r2.dev or a custom domain,
+ *     the base usually already points to the BUCKET ROOT.
+ *     e.g. R2_PUBLIC_BASE = https://pub-xxxxxxxxxxxxxxxxxxxx.r2.dev
+ *     In that case, DO NOT prepend the bucket name again.
+ */
 function buildPublicUrl(key) {
-  const base = (process.env.R2_PUBLIC_BASE || "").replace(/\/+$/, "");
-  const bucket = process.env.S3_BUCKET;
-  if (base && bucket) {
-    return `${base}/${bucket}/${key}`;
-  }
-  return `/r2/${key}`; // fallback marker si aad u ogaato haddii env qaldan yahay
+  const base =
+    (process.env.S3_PUBLIC_BASE ||
+      process.env.R2_PUBLIC_BASE ||
+      "").replace(/\/+$/, "");
+  if (base) return `${base}/${key}`; // base already points to bucket root
+  // Fallback marker so it’s obvious envs aren’t set for public serving:
+  return `/r2/${key}`;
 }
 
 // Accept either R2_* or S3_* variable names
@@ -122,75 +139,112 @@ function envOr(...names) {
 }
 
 function createR2Client() {
-  const accessKeyId     = envOr("R2_ACCESS_KEY_ID", "S3_ACCESS_KEY");
+  const accessKeyId = envOr("R2_ACCESS_KEY_ID", "S3_ACCESS_KEY");
   const secretAccessKey = envOr("R2_SECRET_ACCESS_KEY", "S3_SECRET_KEY");
-  const bucket          = envOr("R2_BUCKET", "S3_BUCKET");
+  const bucket = envOr("R2_BUCKET", "S3_BUCKET");
 
-  // You can provide either a full endpoint or an account id
-  const endpoint = envOr("S3_ENDPOINT") ||
-                   (envOr("R2_ACCOUNT_ID") && `https://${envOr("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`);
+  // Either full endpoint (preferred) or derive from R2_ACCOUNT_ID
+  const endpoint =
+    envOr("S3_ENDPOINT") ||
+    (envOr("R2_ACCOUNT_ID") &&
+      `https://${envOr("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`);
 
   const missing = [];
-  if (!accessKeyId)     missing.push("R2_ACCESS_KEY_ID or S3_ACCESS_KEY");
+  if (!accessKeyId) missing.push("R2_ACCESS_KEY_ID or S3_ACCESS_KEY");
   if (!secretAccessKey) missing.push("R2_SECRET_ACCESS_KEY or S3_SECRET_KEY");
-  if (!bucket)          missing.push("R2_BUCKET or S3_BUCKET");
-  if (!endpoint)        missing.push("S3_ENDPOINT or R2_ACCOUNT_ID");
+  if (!bucket) missing.push("R2_BUCKET or S3_BUCKET");
+  if (!endpoint) missing.push("S3_ENDPOINT or R2_ACCOUNT_ID");
 
   if (missing.length) {
-    throw new Error("R2 configuration missing (env vars): " + missing.join(", "));
+    const msg = `R2 configuration missing: ${missing.join(
+      ", "
+    )}. Check your .env or Render env vars.`;
+    const err = new Error(msg);
+    err.code = "R2_ENV_MISSING";
+    throw err;
   }
 
-  return {
-    client: new S3Client({
-      region: "auto",
-      endpoint,
-      credentials: { accessKeyId, secretAccessKey },
-    }),
-    bucket,
-  };
+  const client = new S3Client({
+    region: "auto",
+    endpoint,
+    credentials: { accessKeyId, secretAccessKey },
+    // path style keeps things simple across S3-compatible providers
+    forcePathStyle: true,
+  });
+
+  return { client, bucket };
 }
 
-// -------- multer (memory) --------
+// ---------------- multer (memory) ----------------
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
   fileFilter: (_req, file, cb) => {
     if (allowed.has(file.mimetype)) return cb(null, true);
-    cb(new Error("Invalid file type. Only PDF, Word, Excel, PowerPoint allowed."));
+    cb(
+      new Error(
+        "Invalid file type. Only PDF, Word, Excel, PowerPoint allowed."
+      )
+    );
   },
 });
 
-// -------- push uploaded file to R2 --------
+// ---------------- push uploaded file to R2 ----------------
 async function uploadToR2(req, _res, next) {
   try {
-    req.normalizedCategory = normalizeCategory(req.body?.category);
-
-    // metadata-only updates pass through
+    // Allow metadata-only routes
     if (!req.file) return next();
 
+    // normalize & keep on req for controller usage
+    req.normalizedCategory = normalizeCategory(req.body?.category);
+
     const { client, bucket } = createR2Client();
-    const key = makeObjectKey(req.file.originalname || "document", req.normalizedCategory);
+    const key = makeObjectKey(
+      req.file.originalname || "document",
+      req.normalizedCategory
+    );
 
-    await client.send(new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: req.file.buffer,
-      ContentType: req.file.mimetype || "application/octet-stream",
-    }));
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype || "application/octet-stream",
+      })
+    );
 
-    req.file.storageKey = key;
-    req.file.fileUrl = buildPublicUrl(key);
+    // Attach for controller
+    req.file.storageKey = key; // e.g. "docs/water/169..._report_abc123.pdf"
+    req.file.webPath = key; // keep the raw key as "path" if you store keys in DB
+    req.file.fileUrl = buildPublicUrl(key); // public URL for clients
     next();
   } catch (err) {
-    next(err);
+    // add friendlier hint for missing envs
+    if (err && err.code === "R2_ENV_MISSING") {
+      return next(err);
+    }
+    const e = new Error(
+      `R2 upload failed: ${err?.message || err}. Check connectivity/creds.`
+    );
+    e.cause = err;
+    next(e);
   }
 }
 
-// Optional helper if you want to delete from R2 elsewhere
+// ---------------- optional: delete helper ----------------
 async function deleteFromR2(storageKey) {
   if (!storageKey) return;
   const { client, bucket } = createR2Client();
   await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: storageKey }));
 }
 
-module.exports = { upload, uploadToR2, deleteFromR2 };
+module.exports = {
+  upload,        // use in router: upload.single("file") or upload.fields([...])
+  uploadToR2,    // upload buffer to R2 and set req.file.webPath + req.file.fileUrl
+  deleteFromR2,  // optional helper
+  // also export utils if you want them in controllers:
+  buildPublicUrl,
+  normalizeCategory,
+  makeObjectKey,
+};
+
