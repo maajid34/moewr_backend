@@ -105,7 +105,11 @@ function makeObjectKey(originalName, category) {
 
 function buildPublicUrl(key) {
   const base = (process.env.R2_PUBLIC_BASE || "").replace(/\/+$/, "");
-  return base ? `${base}/${key}` : `/r2/${key}`; // fallback marker
+  const bucket = process.env.S3_BUCKET;
+  if (base && bucket) {
+    return `${base}/${bucket}/${key}`;
+  }
+  return `/r2/${key}`; // fallback marker si aad u ogaato haddii env qaldan yahay
 }
 
 // Accept either R2_* or S3_* variable names
