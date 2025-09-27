@@ -38,13 +38,13 @@ const WaterProjectSchema = new mongoose.Schema(
     componentTwo: { type: String },
     componentThree: { type: String },
     componentFour: { type: String},
-    StackeholderDesc:{type:String,required: true},
-    stack1Title:{type:String,required: true},
-    stack1desc:{type:String,required: true},
-    stack2Title:{type:String,required: true},
-    stack2desc:{type:String,required: true},
-    stack3Title:{type:String,required: true},
-    stack3desc:{type:String,required: true}, 
+    StackeholderDesc:{type:String},
+    stack1Title:{type:String},
+    stack1desc:{type:String},
+    stack2Title:{type:String},
+    stack2desc:{type:String},
+    stack3Title:{type:String},
+    stack3desc:{type:String}, 
 
     // stake holder
   
