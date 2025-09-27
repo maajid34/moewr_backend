@@ -127,20 +127,15 @@ const createProjectWater = async (req, res) => {
       title: (req.body.title || "").trim(),
       desc: req.body.desc,
       overview: req.body.overview,
-
+      
       coverImage: coverUrl,
       objectiveImage: objectiveUrl,
       GeographicImage: geographicUrl,
-       StackeholderDesc:req.body.StackeholderDesc,
+       
       stackeHolder1: holder1Url,  // keep legacy field name if your schema uses it
-       stack1Title:req.body.stack1Title,
-         stack1desc:req.body.stack1desc,
       stakeHolder2:  holder2Url,
-      stack2Title:req.body.stack2Title,
-      stack2desc:req.body.stack2desc,
       stakeHolder3:  holder3Url,
-      stack3Title:req.body.stack3Title,
-      stack3desc:req.body.stack3desc,
+   
       stakeHolder4:  holder4Url,
 
       objective: req.body.objective,
@@ -150,6 +145,13 @@ const createProjectWater = async (req, res) => {
       componentTwo: req.body.componentTwo,
       componentThree: req.body.componentThree,
       componentFour: req.body.componentFour,
+      StackeholderDesc:req.body.StackeholderDesc,
+        stack1Title:req.body.stack1Title,
+         stack1desc:req.body.stack1desc,
+          stack2Title:req.body.stack2Title,
+      stack2desc:req.body.stack2desc,
+         stack3Title:req.body.stack3Title,
+      stack3desc:req.body.stack3desc,
 
       // achievements (array or JSON string)
       achievements: (() => {
