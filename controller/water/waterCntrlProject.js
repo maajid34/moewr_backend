@@ -131,10 +131,16 @@ const createProjectWater = async (req, res) => {
       coverImage: coverUrl,
       objectiveImage: objectiveUrl,
       GeographicImage: geographicUrl,
-
+       StackeholderDesc:req.body.StackeholderDesc,
       stackeHolder1: holder1Url,  // keep legacy field name if your schema uses it
+       stack1Title:req.body.stack1Title,
+         stack1desc:req.body.stack1desc,
       stakeHolder2:  holder2Url,
+      stack2Title:req.body.stack2Title,
+      stack2desc:req.body.stack2desc,
       stakeHolder3:  holder3Url,
+      stack3Title:req.body.stack3Title,
+      stack3desc:req.body.stack3desc,
       stakeHolder4:  holder4Url,
 
       objective: req.body.objective,
@@ -303,7 +309,8 @@ const updateWaterProject = async (req, res) => {
     const fields = [
       "title","desc","overview",
       "objective","geogrpahic",
-      "componentTitle","componentOne","componentTwo","componentThree","componentFour",
+      "componentTitle","componentOne","componentTwo","componentThree","componentFour","StackeholderDesc",
+      "stack1Title","stack1desc","stack2Title","stack2desc","stack3Title","stack3desc",
     ];
     for (const f of fields) if (req.body[f] !== undefined) set[f] = req.body[f];
 
