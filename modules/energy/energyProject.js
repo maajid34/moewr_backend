@@ -37,7 +37,13 @@ const energyProjectSchema = new mongoose.Schema(
     componentTwo: { type: String },
     componentThree: { type: String },
     componentFour: { type: String},
-
+    StackeholderDesc:{type:String},
+    stack1Title:{type:String},
+    stack1desc:{type:String},
+    stack2Title:{type:String},
+    stack2desc:{type:String},
+    stack3Title:{type:String},
+    stack3desc:{type:String}, 
     // stake holder
     stackeHolder1: { type: String},  //logo1
     stakeHolder2: { type: String },                 // logo 2

@@ -173,6 +173,13 @@ const createProjectEnergy = async (req, res) => {
       componentTwo: req.body.componentTwo,
       componentThree: req.body.componentThree,
       componentFour: req.body.componentFour,
+      StackeholderDesc:req.body.StackeholderDesc,
+      stack1Title: req.body.stack1Title,
+      stack1desc: req.body.stack1desc,
+      stack2Title: req.body.stack2Title,
+      stack2desc: req.body.stack2desc,
+      stack3Title: req.body.stack3Title,
+      stack3desc: req.body.stack3desc,
 
       // achievements (array or JSON string)
       achievements: (() => {
@@ -329,7 +336,8 @@ const updateEnergyProject = async (req, res) => {
     const fields = [
       "title","desc","overview",
       "objective","geogrpahic",
-      "componentTitle","componentOne","componentTwo","componentThree","componentFour",
+      "componentTitle","componentOne","componentTwo","componentThree","componentFour","StackeholderDesc",
+      "stack1Title","stack1desc","stack2Title","stack2desc","stack3Title","stack3desc",
     ];
     for (const f of fields) if (req.body[f] !== undefined) set[f] = req.body[f];
 

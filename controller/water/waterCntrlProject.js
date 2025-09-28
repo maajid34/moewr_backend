@@ -146,11 +146,11 @@ const createProjectWater = async (req, res) => {
       componentThree: req.body.componentThree,
       componentFour: req.body.componentFour,
       StackeholderDesc:req.body.StackeholderDesc,
-        stack1Title: req.body.stack1Title,
-         stack1desc: req.body.stack1desc,
-          stack2Title: req.body.stack2Title,
+      stack1Title: req.body.stack1Title,
+      stack1desc: req.body.stack1desc,
+      stack2Title: req.body.stack2Title,
       stack2desc: req.body.stack2desc,
-         stack3Title: req.body.stack3Title,
+      stack3Title: req.body.stack3Title,
       stack3desc: req.body.stack3desc,
 
       // achievements (array or JSON string)
