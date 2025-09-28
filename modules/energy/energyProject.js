@@ -49,6 +49,7 @@ const energyProjectSchema = new mongoose.Schema(
     stakeHolder2: { type: String },                 // logo 2
     stakeHolder3: { type: String },                 // logo 3
     stakeHolder4: { type: String },                 // logo 4
+    projectSatge: { type: String },                 // logo 4
 
 
     achievements: [achievementSchema],
