@@ -45,7 +45,8 @@ const WaterProjectSchema = new mongoose.Schema(
     stack2desc:{type:String},
     stack3Title:{type:String},
     stack3desc:{type:String}, 
-
+    projectStage:{type:String}, 
+  
     // stake holder
   
     stackeHolder1: { type: String},  //logo1

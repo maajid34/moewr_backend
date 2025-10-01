@@ -180,7 +180,6 @@ const createProjectEnergy = async (req, res) => {
       stack2desc: req.body.stack2desc,
       stack3Title: req.body.stack3Title,
       stack3desc: req.body.stack3desc,
-      projectSatge: req.body.projectSatge,
 
       // achievements (array or JSON string)
       achievements: (() => {

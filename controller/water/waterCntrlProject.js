@@ -152,6 +152,7 @@ const createProjectWater = async (req, res) => {
       stack2desc: req.body.stack2desc,
       stack3Title: req.body.stack3Title,
       stack3desc: req.body.stack3desc,
+      projectStage: req.body.projectStage,
 
       // achievements (array or JSON string)
       achievements: (() => {
@@ -312,7 +313,7 @@ const updateWaterProject = async (req, res) => {
       "title","desc","overview",
       "objective","geogrpahic",
       "componentTitle","componentOne","componentTwo","componentThree","componentFour","StackeholderDesc",
-      "stack1Title","stack1desc","stack2Title","stack2desc","stack3Title","stack3desc",
+      "stack1Title","stack1desc","stack2Title","stack2desc","stack3Title","stack3desc","projectStage",
     ];
     for (const f of fields) if (req.body[f] !== undefined) set[f] = req.body[f];
 
