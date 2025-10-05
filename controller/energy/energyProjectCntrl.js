@@ -225,7 +225,25 @@ const readSignleProjectEnergy = async (req, res) => {
   }
 };
 
+// read stage
 
+const readStageProjectEnergy = async (req, res) => {
+  try {
+    // Find projects where projectStage is either "Implementation Stage" or "On-going Project"
+    const docs = await EnergyProject.find({
+      projectSatge: { $in: ["Implementation Stage", "On-going Project"] },
+    });
+
+    if (!docs || docs.length === 0) {
+      return res.status(404).json({ message: "No Implementation or On-going projects found" });
+    }
+
+    res.json(docs);
+  } catch (err) {
+    console.error("readStageProjectWater error:", err);
+    res.status(500).json({ message: "Failed to fetch projects" });
+  }
+};
 // update
 // const updateEnergyProject = async (req, res) => {
 //   try {
@@ -843,7 +861,8 @@ module.exports = {
   PostProjectPhotos,
   UpdateProjectPhotos,
   DeleteProjectPhoto,
-  ReadProjectPhotos
+  ReadProjectPhotos,
+  readStageProjectEnergy
 };
 
 

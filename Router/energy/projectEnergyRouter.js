@@ -47,6 +47,7 @@ router.post("/createProjectEnergy/EnergyProject",
 
 router.get("/readProjectEnergy/EnergyProject", projectEnergyCntrl.readProjectEnergy);
 router.get("/readProjectEnergySingal/EnergyProject/:id",projectEnergyCntrl.readSignleProjectEnergy);
+router.get("/readProjectEnergyStage",projectEnergyCntrl.readStageProjectEnergy);
 
 // update 
 router.patch(
