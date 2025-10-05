@@ -31,6 +31,7 @@ router.post(
 
 router.get("/readProjectWater/waterProject", projectWaterCntrl.readProjectWater);
 router.get("/readProjectWaterSingal/waterProject/:id",projectWaterCntrl.readSignleProjectWater);
+router.get("/readStageProjectWater",projectWaterCntrl.readStageProjectWater);
 // PATCH: update water project (no achievements touched)
 // router.patch("/UpdateWaterProject/waterProject/:id", verifyToken, isAdmin, projectWaterCntrl.updateWaterProject);
 router.patch(

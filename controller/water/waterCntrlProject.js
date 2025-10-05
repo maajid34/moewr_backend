@@ -199,6 +199,26 @@ const readSignleProjectWater = async (req, res) => {
   }
 };
 
+// 
+const readStageProjectWater = async (req, res) => {
+  try {
+    // Find projects where projectStage is either "Implementation Stage" or "On-going Project"
+    const docs = await WaterProject.find({
+      projectStage: { $in: ["Implementation Stage", "On-going Project"] },
+    });
+
+    if (!docs || docs.length === 0) {
+      return res.status(404).json({ message: "No Implementation or On-going projects found" });
+    }
+
+    res.json(docs);
+  } catch (err) {
+    console.error("readStageProjectWater error:", err);
+    res.status(500).json({ message: "Failed to fetch projects" });
+  }
+};
+
+
 
 
 // update
@@ -653,6 +673,7 @@ module.exports = {
   getAchievements,
   updateAchievement,
   deleteAchievement,
-  readSingleAchievement
+  readSingleAchievement,
+  readStageProjectWater
   
 };
