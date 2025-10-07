@@ -204,36 +204,14 @@ const createProjectEnergy = async (req, res) => {
 
 
 
-// const readProjectEnergy = async (req, res) => {
-//   try {
-//     const projects = await EnergyProject.find();
-//     res.json(projects);
-//   } catch (err) {
-//     res.status(500).json({ message: "Failed to fetch projects" });
-//   }
-// };
 const readProjectEnergy = async (req, res) => {
   try {
-    // Fetch all projects
     const projects = await EnergyProject.find();
-
-    // Sort manually: incomplete first, completed last
-    const sortedProjects = projects.sort((a, b) => {
-      const aCompleted = a.projectSatge?.toLowerCase() === "Project Completed";
-      const bCompleted = b.projectSatge?.toLowerCase() === "Project Completed";
-
-      if (aCompleted && !bCompleted) return 1;  // Completed goes down
-      if (!aCompleted && bCompleted) return -1; // Not completed goes up
-      return 0; // Keep same order otherwise
-    });
-
-    res.json(sortedProjects);
+    res.json(projects);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Failed to fetch projects" });
   }
 };
-
 
 // Read single
 const readSignleProjectEnergy = async (req, res) => {
