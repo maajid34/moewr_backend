@@ -219,8 +219,8 @@ const readProjectEnergy = async (req, res) => {
 
     // Sort manually: incomplete first, completed last
     const sortedProjects = projects.sort((a, b) => {
-      const aCompleted = a.projectStage?.toLowerCase() === "completed";
-      const bCompleted = b.projectStage?.toLowerCase() === "completed";
+      const aCompleted = a.projectSatge?.toLowerCase() === "completed";
+      const bCompleted = b.projectSatge?.toLowerCase() === "completed";
 
       if (aCompleted && !bCompleted) return 1;  // Completed goes down
       if (!aCompleted && bCompleted) return -1; // Not completed goes up
