@@ -213,9 +213,47 @@ const createAdmin = async (req, res) => {
 
 
 // ✅ Login (same as before, just renamed)
+// const AminLogin = async (req, res) => {
+//   try {
+//     const email = String(req.body.email ?? req.body.Email ?? "").trim().toLowerCase();
+//     const password = String(req.body.password ?? req.body.Password ?? "");
+
+//     if (!email || !password) {
+//       return res.status(400).json({ message: "Email and Password are required" });
+//     }
+
+//     const user = await customerModel.findOne({ email });
+//     if (!user) return res.status(401).json({ message: "Invalid Email or Password" });
+
+//     const ok = await bcryptjs.compare(password, user.password);
+//     if (!ok) return res.status(401).json({ message: "Invalid Email or Password" });
+
+//     const token = jwt.sign(
+//       { id: user._id, name: user.name, email: user.email, role: user.role },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1d" }
+//     );
+
+//     res.json({
+//       message: "Login successful",
+//       user: {
+//         id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         role: user.role,
+//       },
+//       token,
+//     });
+//   } catch (error) {
+//     console.error("LOGIN ERROR:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
 const AminLogin = async (req, res) => {
   try {
-    const email = String(req.body.email ?? req.body.Email ?? "").trim().toLowerCase();
+    const email = String(req.body.email ?? req.body.Email ?? "")
+      .trim()
+      .toLowerCase();
     const password = String(req.body.password ?? req.body.Password ?? "");
 
     if (!email || !password) {
@@ -228,9 +266,17 @@ const AminLogin = async (req, res) => {
     const ok = await bcryptjs.compare(password, user.password);
     if (!ok) return res.status(401).json({ message: "Invalid Email or Password" });
 
+    // ⭐ FIXED — Check for secret
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error("❌ JWT_SECRET missing!");
+      return res.status(500).json({ message: "Server config error" });
+    }
+
+    // ⭐ Create Token
     const token = jwt.sign(
       { id: user._id, name: user.name, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
+      secret,
       { expiresIn: "1d" }
     );
 
@@ -244,11 +290,13 @@ const AminLogin = async (req, res) => {
       },
       token,
     });
+
   } catch (error) {
     console.error("LOGIN ERROR:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 
