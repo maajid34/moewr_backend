@@ -218,7 +218,7 @@ const readSignleProjectEnergy = async (req, res) => {
   try {
     const doc = await EnergyProject.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: "Project not found" });
-    redss.json(doc);
+    res.json(doc);
   } catch (err) {
     console.error("readSignleProjectEnergy error:", err);
     res.status(500).json({ message: "Failed to fetch project" });
