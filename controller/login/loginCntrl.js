@@ -267,7 +267,7 @@ const AminLogin = async (req, res) => {
     if (!ok) return res.status(401).json({ message: "Invalid Email or Password" });
 
     // ⭐ FIXED — Check for secret
-    const secret = process.env.JWT_SECRET;
+    const secret = process.env.JWT_Secret;
     if (!secret) {
       console.error("❌ JWT_SECRET missing!");
       return res.status(500).json({ message: "Server config error" });
