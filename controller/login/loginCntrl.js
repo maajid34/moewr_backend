@@ -170,63 +170,15 @@ const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 // // ✅ Create a new account (user or admin)
-// const createAdmin = async (req, res) => {
-//   try {
-//     const name = String(req.body.name ?? req.body.Name ?? "").trim();
-//     const email = String(req.body.email ?? req.body.Email ?? "").trim().toLowerCase();
-//     const password = String(req.body.password ?? req.body.Password ?? "");
-//     const role = req.body.role === "admin" ? "admin" : "user"; // default = user
-
-//     if (!email || !password) {
-//       return res.status(400).json({ message: "Email and password are required" });
-//     }
-
-//     const exist = await customerModel.findOne({ email });
-//     if (exist) {
-//       return res.status(409).json({ message: "Email already exists" });
-//     }
-
-//     const hash = await bcryptjs.hash(password, 10);
-
-//     const user = await customerModel.create({
-//       name: name || "User",
-//       email,
-//       password: hash,
-//       role,
-//     });
-
-//     res.status(201).json({
-//       message: "Account created successfully",
-//       user: {
-//         id: user._id,
-//         name: user.name,
-//         email: user.email,
-//         role: user.role,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("REGISTER ERROR:", error);
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 const createAdmin = async (req, res) => {
   try {
     const name = String(req.body.name ?? req.body.Name ?? "").trim();
-    const email = String(req.body.email ?? req.body.Email ?? "")
-      .trim()
-      .toLowerCase();
+    const email = String(req.body.email ?? req.body.Email ?? "").trim().toLowerCase();
     const password = String(req.body.password ?? req.body.Password ?? "");
-
-    // FINAL: default = "user", only "admin" if frontend sends role:"admin"
-    const role = req.body.role === "admin" ? "admin" : "user";
-
-    console.log("BODY:", req.body);
-    console.log("REQ ROLE:", req.body.role, "FINAL ROLE SAVED:", role);
+    const role = req.body.role === "admin" ? "admin" : "user"; // default = user
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
     const exist = await customerModel.findOne({ email });
@@ -240,10 +192,10 @@ const createAdmin = async (req, res) => {
       name: name || "User",
       email,
       password: hash,
-      role, // 👈 this is now "user" OR "admin"
+      role,
     });
 
-    return res.status(201).json({
+    res.status(201).json({
       message: "Account created successfully",
       user: {
         id: user._id,
@@ -254,9 +206,10 @@ const createAdmin = async (req, res) => {
     });
   } catch (error) {
     console.error("REGISTER ERROR:", error);
-    return res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 // ✅ Login (same as before, just renamed)
