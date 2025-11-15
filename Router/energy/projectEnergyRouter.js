@@ -10,20 +10,6 @@ const { verifyToken, isAdmin } = require("../../middleWare/Auth");
 
 const router = express.Router();
 
-// router.post(
-//   "/createProjectEnergy/EnergyProject",
-//   uploadImage.fields([
-//     { name: "coverImage", maxCount: 1 },
-//     { name: "objectiveImage", maxCount: 1 },
-//     { name: "stackeHolder1", maxCount: 1 }, // schema typo
-//     { name: "stakeHolder1", maxCount: 1 },  // accepted alias from client
-
-//     { name: "stakeHolder2", maxCount: 1 },
-//     { name: "stakeHolder3", maxCount: 1 },
-//     { name: "stakeHolder4", maxCount: 1 },
-//   ]),
-//   projectEnergyCntrl.createProjectEnergy
-// );
 
 
 router.post("/createProjectEnergy/EnergyProject",
@@ -45,15 +31,23 @@ router.post("/createProjectEnergy/EnergyProject",
   projectEnergyCntrl.createProjectEnergy
 );
 
-router.get("/readProjectEnergy/EnergyProject", projectEnergyCntrl.readProjectEnergy);
-router.get("/readProjectEnergySingal/EnergyProject/:id",projectEnergyCntrl.readSignleProjectEnergy);
-router.get("/readProjectEnergyStage",projectEnergyCntrl.readStageProjectEnergy);
+router.get("/readProjectEnergy/EnergyProject", verifyToken,
+  // isAdmin,
+   projectEnergyCntrl.readProjectEnergy);
+router.get("/readProjectEnergySingal/EnergyProject/:id",
+   verifyToken,
+   isAdmin,
+  projectEnergyCntrl.readSignleProjectEnergy);
+router.get("/readProjectEnergyStage",
+   verifyToken,
+  // isAdmin,
+   projectEnergyCntrl.readStageProjectEnergy);
 
 // update 
 router.patch(
   "/UpdateEnergyProject/energy/:id",
-  // verifyToken,
-  // isAdmin,
+  verifyToken,
+  isAdmin,
   uploadBuffer.fields([
     { name: "coverImage", maxCount: 1 },
     { name: "objectiveImage", maxCount: 1 },
@@ -70,25 +64,28 @@ router.patch(
 );
 
 // DELETE whole project
-router.delete("/DeleteEnergyProject/energy/:id", projectEnergyCntrl.deleteEnergyProject);
+router.delete("/DeleteEnergyProject/energy/:id",  verifyToken,
+  isAdmin,projectEnergyCntrl.deleteEnergyProject);
 
 // Achievements---------------------------
-router.post("/createAchiev/:id/achievements", projectEnergyCntrl.addAchievement);
-router.get("/createAchiev/:id/achievements",verifyToken,isAdmin, projectEnergyCntrl.getAchievements); // ✅ beddel
+router.post("/createAchiev/:id/achievements",  verifyToken,
+  // isAdmin,
+   projectEnergyCntrl.addAchievement);
+router.get("/createAchiev/:id/achievements",verifyToken, projectEnergyCntrl.getAchievements); // ✅ beddel
 
 // update and delete achiements
 router.patch(
   "/UpdateEnergyAchiev/:id/achievements/:index",
-  // verifyToken,
-  // isAdmin,
+  verifyToken,
+  isAdmin,
   projectEnergyCntrl.updateEnergyAchievement
 );
 
 // delete
 router.delete(
   "/DeleteEnergyAchiev/:id/achievements/:index",
-  // verifyToken,
-  // isAdmin,
+  verifyToken,
+  isAdmin,
   projectEnergyCntrl.deleteEnergyAchievement
 );
 
@@ -96,7 +93,7 @@ router.delete(
 // readsingal achievments
 router.get(
   "/ReadSingalEnergyAchiev/:id/achievements/:index",
-  // verifyToken,
+  verifyToken,
   // isAdmin,
   projectEnergyCntrl.readSingleEnergyAchievement
 );
@@ -115,20 +112,31 @@ router.post("/customerLogin", AdminLogin.AminLogin);
 router.post(
   "/energyProject/:id/photos",
   uploadBuffer.fields([{ name: "photos", maxCount: 20 }, { name: "Photos", maxCount: 20 }]),
+   verifyToken,
+  // isAdmin,
   projectEnergyCntrl.PostProjectPhotos
 );
 
 router.put(
   "/energyProject/:id/photos",
   uploadBuffer.fields([{ name: "photos", maxCount: 20 }, { name: "Photos", maxCount: 20 }]),
+   verifyToken,
+   isAdmin,
   projectEnergyCntrl.UpdateProjectPhotos
 );
 
 
 // 
-router.get("/ReadEnergyProjectPhoto/:id/photos", projectEnergyCntrl.ReadProjectPhotos);
+router.get("/ReadEnergyProjectPhoto/:id/photos",
+   verifyToken,
+  // isAdmin,
+   projectEnergyCntrl.ReadProjectPhotos);
 
-router.delete("/energyProject/:id/photos", projectEnergyCntrl.DeleteProjectPhoto);
+router.delete("/energyProject/:id/photos",
+   verifyToken,
+  isAdmin, 
+  projectEnergyCntrl.DeleteProjectPhoto);
+
 module.exports = router;
 
 

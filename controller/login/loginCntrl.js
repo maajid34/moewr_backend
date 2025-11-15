@@ -277,7 +277,7 @@ const AminLogin = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, name: user.name, email: user.email, role: user.role },
       secret,
-      { expiresIn: "1d" }
+      { expiresIn: "10s" }
     );
 
     res.json({
