@@ -31,12 +31,13 @@ router.post("/createProjectEnergy/EnergyProject",
   projectEnergyCntrl.createProjectEnergy
 );
 
-router.get("/readProjectEnergy/EnergyProject", verifyToken,
+router.get("/readProjectEnergy/EnergyProject", 
+  // verifyToken,
   // isAdmin,
    projectEnergyCntrl.readProjectEnergy);
 router.get("/readProjectEnergySingal/EnergyProject/:id",
-   verifyToken,
-   isAdmin,
+  //  verifyToken,
+  //  isAdmin,
   projectEnergyCntrl.readSignleProjectEnergy);
 router.get("/readProjectEnergyStage",
    verifyToken,
