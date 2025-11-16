@@ -14,6 +14,16 @@ const activitySchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    reportType: {
+      type: String,
+      enum: [
+        "Activity Report",
+        "Monthly Report",
+        "Quarter Report",
+        "Assessment Report",
+      ],
+      default: "Activity Report",
+    },
 
     submittedByName: {
       type: String,
