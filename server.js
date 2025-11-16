@@ -8,6 +8,7 @@ const EventRouter = require("./Router/event/eventRouter")
 const AssessmentRouter = require("./Router/assessmentRouter/assessmentRouter.js")
 const uploadRoutes = require("./Router/uploadRouter/uploadRouter.js");
 const inventoryRoutes = require("./Router/wareHouseRouter/inventoryRoutes.js");
+const activityRoutes = require("./Router/activityRoute/activityRoutes.js");
 
 const app = express()
 app.use(express.json())
@@ -44,6 +45,7 @@ app.use(projectWaterRouter);
 app.use(EventRouter);
 app.use(AssessmentRouter);
 app.use(inventoryRoutes);
+app.use("/api/activities", activityRoutes);
 
 // sida images loo soo aqristo
 
