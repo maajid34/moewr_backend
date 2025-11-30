@@ -129,7 +129,7 @@ router.put(
 
 // 
 router.get("/ReadEnergyProjectPhoto/:id/photos",
-   verifyToken,
+  //  verifyToken,
   // isAdmin,
    projectEnergyCntrl.ReadProjectPhotos);
 
