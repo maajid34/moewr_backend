@@ -40,7 +40,7 @@ router.get("/readProjectEnergySingal/EnergyProject/:id",
   //  isAdmin,
   projectEnergyCntrl.readSignleProjectEnergy);
 router.get("/readProjectEnergyStage",
-   verifyToken,
+  //  verifyToken,
   // isAdmin,
    projectEnergyCntrl.readStageProjectEnergy);
 
