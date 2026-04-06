@@ -47,6 +47,7 @@ app.use(projectEnergyRouter);
 app.use(projectWaterRouter);
 app.use(EventRouter);
 app.use(AssessmentRouter);
+
 app.use(inventoryRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/assets", assetRoutes);
