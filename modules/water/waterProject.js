@@ -26,7 +26,7 @@ const WaterProjectSchema = new mongoose.Schema(
     overview: { type: String },
 
     // Images
-    coverImage: { type: String},     // main image
+    coverImage: { type: String, required: true },     // main image
     objectiveImage: { type: String },                 // optional second image
     GeographicImage: { type: String },                 // optional second image
     

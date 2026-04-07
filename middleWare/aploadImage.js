@@ -43,14 +43,27 @@ const uploadBuffer = multer({
   },
 });
 
+// const s3 = new S3Client({
+//   region: "auto", // R2 uses "auto"
+//   endpoint: process.env.S3_ENDPOINT,
+//   credentials: {
+//     accessKeyId: process.env.S3_ACCESS_KEY,
+//     secretAccessKey: process.env.S3_SECRET_KEY,
+//   },
+// });
+
 const s3 = new S3Client({
-  region: "auto", // R2 uses "auto"
+  region: "auto",
   endpoint: process.env.S3_ENDPOINT,
+  forcePathStyle: true, // 🔥 THIS IS THE FIX
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY,
     secretAccessKey: process.env.S3_SECRET_KEY,
   },
 });
+
+
+
 
 function makeObjectKey(originalName, folder = "uploads") {
   const ext = path.extname(originalName).toLowerCase() || ".jpg";
@@ -78,6 +91,23 @@ function buildPublicUrl(key) {
   return `/r2/${key}`; // placeholder so you see when S3_PUBLIC_BASE is missing
 }
 
+async function testUpload() {
+  await s3.send(new PutObjectCommand({
+    Bucket: "moewr-uploads",
+    Key: "water/cover/test.jpg",
+    Body: Buffer.from("hello"),
+  }));
+  console.log("Upload success");
+}
+
+// call it
+testUpload();
+
+
+
+console.log("R2_ACCESS_KEY:", process.env.S3_ACCESS_KEY);
+console.log("R2_SECRET_KEY:", process.env.S3_SECRET_KEY);
+console.log("R2_ENDPOINT:", process.env.S3_ENDPOINT);
 module.exports = {
   uploadBuffer,
   makeObjectKey,
