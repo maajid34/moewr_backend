@@ -654,7 +654,7 @@ const DeleteProjectPhoto = async (req, res) => {
 };
 
 
-module.exports = { deleteAchievement };
+// module.exports = { deleteAchievement };
 
 
 
