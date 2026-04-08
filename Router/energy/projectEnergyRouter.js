@@ -86,8 +86,8 @@ router.patch(
 // delete
 router.delete(
   "/DeleteEnergyAchiev/:id/achievements/:index",
-  verifyToken,
-  isAdmin,
+  // verifyToken,
+  // isAdmin,
   projectEnergyCntrl.deleteEnergyAchievement
 );
 
