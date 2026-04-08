@@ -69,7 +69,8 @@ router.delete("/DeleteEnergyProject/energy/:id",  verifyToken,
   isAdmin,projectEnergyCntrl.deleteEnergyProject);
 
 // Achievements---------------------------
-router.post("/createAchiev/:id/achievements",  verifyToken,
+router.post("/createAchiev/:id/achievements",  
+  // verifyToken,
   // isAdmin,
    projectEnergyCntrl.addAchievement);
 router.get("/createAchiev/:id/achievements",verifyToken, projectEnergyCntrl.getAchievements); // ✅ beddel
