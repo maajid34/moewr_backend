@@ -78,8 +78,8 @@ router.get("/createAchiev/:id/achievements",verifyToken, projectEnergyCntrl.getA
 // update and delete achiements
 router.patch(
   "/UpdateEnergyAchiev/:id/achievements/:index",
-  verifyToken,
-  isAdmin,
+  // verifyToken,
+  // isAdmin,
   projectEnergyCntrl.updateEnergyAchievement
 );
 
