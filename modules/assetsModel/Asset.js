@@ -4,18 +4,15 @@ const assetSchema = new mongoose.Schema(
   {
     assetNo: {
       type: Number,
-      required: true,
       unique: true,
       index: true,
     },
     description: {
       type: String,
-      required: true,
       trim: true,
     },
     tagNumber: {
       type: String,
-      required: true,
       unique: true,
       trim: true,
       index: true,
