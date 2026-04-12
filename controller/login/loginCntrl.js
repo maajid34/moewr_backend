@@ -163,15 +163,24 @@ const deleteUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { name, email, role, password } = req.body;
+
+    let updateData = { name, email, role };
+
+    // ✅ ONLY update password if user typed new one
+    if (password && password.trim() !== "") {
+      const hash = await bcryptjs.hash(password, 10);
+      updateData.password = hash;
+    }
 
     const user = await customerModel.findByIdAndUpdate(
       req.params.id,
-      { name, email, role },
+      updateData,
       { new: true }
     );
 
-    res.json(user);
+    res.json({ message: "User updated", user });
+
   } catch (error) {
     res.status(500).json({ message: "Update failed" });
   }
