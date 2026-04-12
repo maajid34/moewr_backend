@@ -29,7 +29,7 @@ const LoginSchema = new mongoose.Schema(
     //   alias: "Password",
     },
 
-    role: { type: String, enum: ["admin","water","energy"], default: "energy" },
+    role: { type: String, enum: ["admin","water","energy","logistic"], default: "energy" },
   },
   { timestamps: true }
 );
