@@ -106,6 +106,9 @@ router.get(
 // admin login
 router.post("/createAdmin", AdminLogin.createAdmin);
 router.post("/customerLogin", AdminLogin.AminLogin);
+router.get("/users", AdminLogin.getUsers);
+router.delete("/users/:id", AdminLogin.deleteUser);
+router.put("/users/:id", AdminLogin.updateUser);
 
 
 

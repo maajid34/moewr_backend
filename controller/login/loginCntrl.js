@@ -142,8 +142,39 @@ const AminLogin = async (req, res) => {
   }
 };
 
+const getUsers = async (req, res) => {
+  try {
+    const users = await customerModel.find().select("-password");
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching users" });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    await customerModel.findByIdAndDelete(req.params.id);
+    res.json({ message: "User deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Delete failed" });
+  }
+};
 
 
+const updateUser = async (req, res) => {
+  try {
+    const { name, email, role } = req.body;
 
+    const user = await customerModel.findByIdAndUpdate(
+      req.params.id,
+      { name, email, role },
+      { new: true }
+    );
 
-module.exports = { createAdmin, AminLogin };
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Update failed" });
+  }
+};
+
+module.exports = { createAdmin, AminLogin,getUsers,deleteUser,updateUser };
