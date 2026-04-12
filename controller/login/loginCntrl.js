@@ -55,7 +55,7 @@ const createAdmin = async (req, res) => {
     const email = String(req.body.email ?? "").trim().toLowerCase();
     const password = String(req.body.password ?? "");
 
-    const allowedRoles = ["admin", "energy", "water"];
+    const allowedRoles = ["admin", "energy", "water","logistic"];
     const role = allowedRoles.includes(req.body.role)
       ? req.body.role
       : "energy";
