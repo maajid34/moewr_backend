@@ -10,6 +10,7 @@ const uploadRoutes = require("./Router/uploadRouter/uploadRouter.js");
 const inventoryRoutes = require("./Router/wareHouseRouter/inventoryRoutes.js");
 const activityRoutes = require("./Router/activityRoute/activityRoutes.js");
 const assetRoutes = require("./Router/assetRoutes/assetRoutes.js");
+const sumaryRoutes = require("./Router/summaryRouter/summaryRouter.js");
 
 const app = express()
 app.use(express.json())
@@ -51,6 +52,7 @@ app.use(AssessmentRouter);
 app.use(inventoryRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/assets", assetRoutes);
+app.use("/api/achievements", sumaryRoutes);
 
 // sida images loo soo aqristo
 
