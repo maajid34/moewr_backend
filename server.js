@@ -52,7 +52,7 @@ app.use(AssessmentRouter);
 app.use(inventoryRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/assets", assetRoutes);
-app.use("/api/achievements", sumaryRoutes);
+app.use("/api/sumaryachievements", sumaryRoutes);
 
 // sida images loo soo aqristo
 
