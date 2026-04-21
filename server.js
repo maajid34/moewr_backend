@@ -13,6 +13,18 @@ const assetRoutes = require("./Router/assetRoutes/assetRoutes.js");
 const sumaryRoutes = require("./Router/summaryRouter/summaryRouter.js");
 const attendanceRouter = require("./Router/staffRouter/attendanceRoutes.js");
 const employeRouter = require("./Router/staffRouter/employeeRoutes.js");
+const cron = require("node-cron");
+const http = require("http");
+const { Server } = require("socket.io");
+
+
+
+
+
+// // instead of app.listen
+// server.listen(process.env.port, () =>
+//   console.log("server is running")
+// );
 
 const app = express()
 app.use(express.json())
@@ -66,6 +78,30 @@ app.use("/upload", uploadRoutes);
 
 // app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+
+// ---------- SOCKET.IO ----------
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: { origin: "*" },
+});
+
+app.set("io", io);
+
+
+// staff
+const { syncDevice } = require("./controller/staffCotroller/attendanceController.js");
+
+cron.schedule("*/1 * * * *", async () => {
+  console.log("⏱ Syncing device...");
+  await syncDevice();
+});
+
+// instead of app.listen
+server.listen(process.env.port, () =>
+  console.log("server is running")
+);
 
 //  app.listen(3000, () => console.log("server is running"))
 app.listen(process.env.port, () => console.log(`server is running`))

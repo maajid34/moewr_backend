@@ -65,6 +65,9 @@
 const Attendance = require("../../modules/staff/attendanceModel");
 const Employee = require("../../modules/staff/employeeModel");
 const { today, isLate } = require("../../utils/time");
+const ZKLib = require("node-zklib");
+const io = require("../../server").io; // or use req.app.get("io")
+
 
 // POST /api/attendance/scan
 exports.scanFingerprint = async (req, res) => {
@@ -99,6 +102,8 @@ exports.scanFingerprint = async (req, res) => {
         checkIn: new Date(),
         status: late ? "Late" : "Present",
       });
+ 
+
 
       return res.json({
         message: `Check-in ${employee.name}`,
@@ -164,5 +169,102 @@ exports.getSummary = async (req, res) => {
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+};
+
+// exports.syncZKTeco = async (req, res) => {
+
+//   const zk = new ZKLib("192.168.1.201", 4370, 10000, 4000);
+
+//   try {
+//     await zk.createSocket();
+
+//     const logs = await zk.getAttendances();
+
+//     for (let log of logs.data) {
+//       const employee = await Employee.findOne({
+//         employeeId: log.deviceUserId,
+//       });
+
+//       if (!employee) continue;
+
+//       const date = log.recordTime.toISOString().split("T")[0];
+
+//       let record = await Attendance.findOne({
+//         employee: employee._id,
+//         date,
+//       });
+
+//       if (!record) {
+//         // ✅ CHECK-IN
+//         await Attendance.create({
+//           employee: employee._id,
+//           date,
+//           checkIn: log.recordTime,
+//           status: "Present",
+//         });
+//       } else if (!record.checkOut) {
+//         // 🚪 CHECK-OUT
+//         record.checkOut = log.recordTime;
+//         await record.save();
+//       }
+//     }
+
+//     await zk.disconnect();
+
+//     res.json({ message: "Synced & Saved to DB ✅" });
+
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+const syncDevice = async () => {
+  const zk = new ZKLib("192.168.1.201", 4370, 10000, 4000);
+
+  await zk.createSocket();
+  const logs = await zk.getAttendances();
+
+  for (let log of logs.data) {
+    const employee = await Employee.findOne({
+      employeeId: log.deviceUserId,
+    });
+
+    if (!employee) continue;
+
+    const date = log.recordTime.toISOString().split("T")[0];
+
+    let record = await Attendance.findOne({
+      employee: employee._id,
+      date,
+    });
+
+    if (!record) {
+      await Attendance.create({
+        employee: employee._id,
+        date,
+        checkIn: log.recordTime,
+        status: "Present",
+      });
+        // 🔥 REALTIME EMIT
+      const io = app.get("io");
+      io.emit("attendance_update");
+      
+    } else if (!record.checkOut) {
+      record.checkOut = log.recordTime;
+      await record.save();
+    }
+  }
+
+  await zk.disconnect();
+};
+
+exports.syncDevice = syncDevice;
+
+exports.syncZKTeco = async (req, res) => {
+  try {
+    await syncDevice();
+    res.json({ message: "Synced & Saved to DB ✅" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
