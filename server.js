@@ -98,7 +98,7 @@ const { syncDevice } = require("./controller/staffCotroller/attendanceController
 //   await syncDevice();
 // });
 
-cron.schedule("*/10 * * * *", async () => {
+cron.schedule("*/1 * * * *", async () => {
   console.log("⏱ Syncing device...");
   await syncDevice(io);
 });

@@ -299,6 +299,27 @@ exports.getSummary = async (req, res) => {
 //     await zk.createSocket();
 //     console.log("✅ Device Connected");
 
+//     // =============================
+//     // 🔥 GET USERS (NAME FROM DEVICE)
+//     // =============================
+//     const users = await zk.getUsers();
+
+//     const userMap = {};
+
+//     if (users && users.data) {
+//       console.log("👤 USERS:", users.data);
+
+//       users.data.forEach((u) => {
+//         const id = String(u.userId).trim();
+
+//         userMap[id] =
+//           u.name?.trim() || u.cardNo || `User ${id}`;
+//       });
+//     }
+
+//     // =============================
+//     // 🔥 GET ATTENDANCE LOGS
+//     // =============================
 //     const logs = await zk.getAttendances();
 
 //     if (!logs || !logs.data) {
@@ -306,15 +327,24 @@ exports.getSummary = async (req, res) => {
 //       return;
 //     }
 
+//     // =============================
+//     // 🔁 PROCESS LOGS
+//     // =============================
 //     for (let log of logs.data) {
-//       console.log("📌 DEVICE LOG:", log.deviceUserId);
+//       const id = String(log.deviceUserId).trim();
 
+//       console.log("📌 DEVICE LOG:", id);
+
+//       // 🔥 GET REAL NAME
+//       const realName = userMap[id] || `User ${id}`;
+
+//       // 🔥 AUTO CREATE / UPDATE EMPLOYEE
 //       let employee = await Employee.findOneAndUpdate(
-//         { fingerprintId: String(log.deviceUserId) },
+//         { fingerprintId: id },
 //         {
-//           name: `User ${log.deviceUserId}`,
-//           employeeId: String(log.deviceUserId),
-//           fingerprintId: String(log.deviceUserId),
+//           name: realName,
+//           employeeId: id,
+//           fingerprintId: id,
 //         },
 //         { new: true, upsert: true }
 //       );
@@ -326,8 +356,14 @@ exports.getSummary = async (req, res) => {
 //         date,
 //       });
 
-//       if (record && record.checkIn && record.checkOut) continue;
+//       // 🔥 SKIP haddii hore loo dhameeyay
+//       if (record && record.checkIn && record.checkOut) {
+//         continue;
+//       }
 
+//       // =============================
+//       // ✅ CHECK-IN
+//       // =============================
 //       if (!record) {
 //         await Attendance.create({
 //           employee: employee._id,
@@ -336,10 +372,19 @@ exports.getSummary = async (req, res) => {
 //           status: isLate(9) ? "Late" : "Present",
 //         });
 
+//         console.log(`✅ CHECK-IN: ${realName}`);
+
 //         if (io) io.emit("attendance_update");
-//       } else if (!record.checkOut) {
+//       }
+
+//       // =============================
+//       // 🚪 CHECK-OUT
+//       // =============================
+//       else if (!record.checkOut) {
 //         record.checkOut = log.recordTime;
 //         await record.save();
+
+//         console.log(`🚪 CHECK-OUT: ${realName}`);
 
 //         if (io) io.emit("attendance_update");
 //       }
@@ -352,6 +397,7 @@ exports.getSummary = async (req, res) => {
 //     console.log("❌ ZK SAFE ERROR:", err.message);
 //   }
 // };
+
 const syncDevice = async (io) => {
   const zk = new ZKLib("192.168.1.201", 4370, 10000, 4000);
 
@@ -360,7 +406,7 @@ const syncDevice = async (io) => {
     console.log("✅ Device Connected");
 
     // =============================
-    // 🔥 GET USERS (NAME FROM DEVICE)
+    // 🔥 GET USERS
     // =============================
     const users = await zk.getUsers();
 
@@ -371,14 +417,12 @@ const syncDevice = async (io) => {
 
       users.data.forEach((u) => {
         const id = String(u.userId).trim();
-
-        userMap[id] =
-          u.name?.trim() || u.cardNo || `User ${id}`;
+        userMap[id] = u.name?.trim() || `User ${id}`;
       });
     }
 
     // =============================
-    // 🔥 GET ATTENDANCE LOGS
+    // 🔥 GET LOGS
     // =============================
     const logs = await zk.getAttendances();
 
@@ -395,10 +439,21 @@ const syncDevice = async (io) => {
 
       console.log("📌 DEVICE LOG:", id);
 
-      // 🔥 GET REAL NAME
       const realName = userMap[id] || `User ${id}`;
 
-      // 🔥 AUTO CREATE / UPDATE EMPLOYEE
+      // =============================
+      // 🔥 IGNORE OLD LOGS (IMPORTANT)
+      // =============================
+      const now = new Date();
+      const logTime = new Date(log.recordTime);
+
+      if (now - logTime > 60000) {
+        continue; // skip old logs
+      }
+
+      // =============================
+      // 🔥 CREATE / UPDATE EMPLOYEE
+      // =============================
       let employee = await Employee.findOneAndUpdate(
         { fingerprintId: id },
         {
@@ -409,45 +464,36 @@ const syncDevice = async (io) => {
         { new: true, upsert: true }
       );
 
-      const date = log.recordTime.toISOString().split("T")[0];
+      const date = logTime.toISOString().split("T")[0];
 
-      let record = await Attendance.findOne({
+      // =============================
+      // 🔥 PREVENT DUPLICATE
+      // =============================
+      const existing = await Attendance.findOne({
         employee: employee._id,
-        date,
+        checkIn: logTime,
       });
 
-      // 🔥 SKIP haddii hore loo dhameeyay
-      if (record && record.checkIn && record.checkOut) {
+      if (existing) {
         continue;
       }
 
       // =============================
-      // ✅ CHECK-IN
+      // ✅ ALWAYS SAVE NEW LOG
       // =============================
-      if (!record) {
-        await Attendance.create({
-          employee: employee._id,
-          date,
-          checkIn: log.recordTime,
-          status: isLate(9) ? "Late" : "Present",
-        });
+      await Attendance.create({
+        employee: employee._id,
+        date,
+        checkIn: logTime,
+        status: isLate(9) ? "Late" : "Present",
+      });
 
-        console.log(`✅ CHECK-IN: ${realName}`);
-
-        if (io) io.emit("attendance_update");
-      }
+      console.log(`🔥 SAVED TO DB: ${realName}`);
 
       // =============================
-      // 🚪 CHECK-OUT
+      // 🔥 REALTIME UPDATE
       // =============================
-      else if (!record.checkOut) {
-        record.checkOut = log.recordTime;
-        await record.save();
-
-        console.log(`🚪 CHECK-OUT: ${realName}`);
-
-        if (io) io.emit("attendance_update");
-      }
+      if (io) io.emit("attendance_update");
     }
 
     await zk.disconnect();
