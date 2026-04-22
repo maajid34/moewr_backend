@@ -93,18 +93,29 @@ app.set("io", io);
 // staff
 const { syncDevice } = require("./controller/staffCotroller/attendanceController.js");
 
-cron.schedule("*/1 * * * *", async () => {
+// cron.schedule("*/1 * * * *", async () => {
+//   console.log("⏱ Syncing device...");
+//   await syncDevice();
+// });
+
+cron.schedule("*/10 * * * *", async () => {
   console.log("⏱ Syncing device...");
-  await syncDevice();
+  await syncDevice(io);
+});
+process.on("uncaughtException", (err) => {
+  console.log("🔥 Uncaught Error:", err.message);
 });
 
+process.on("unhandledRejection", (err) => {
+  console.log("🔥 Promise Error:", err);
+});
 // instead of app.listen
 server.listen(process.env.port, () =>
   console.log("server is running")
 );
 
 //  app.listen(3000, () => console.log("server is running"))
-app.listen(process.env.port, () => console.log(`server is running`))
+// app.listen(process.env.port, () => console.log(`server is running`))
 
 
 // lates sarevr
