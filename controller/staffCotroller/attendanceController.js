@@ -358,6 +358,10 @@ exports.getSummary = async (req, res) => {
 // 🔥 DEVICE SYNC (IMPORTANT FIX)
 // =============================
 
+// let lastProcessedTime = null;
+
+
+
 // const syncDevice = async (io) => {
 //   const zk = new ZKLib("192.168.1.201", 4370, 10000, 4000);
 
@@ -369,7 +373,6 @@ exports.getSummary = async (req, res) => {
 //     // 🔥 GET USERS
 //     // =============================
 //     const users = await zk.getUsers();
-
 //     const userMap = {};
 
 //     if (users && users.data) {
@@ -386,19 +389,24 @@ exports.getSummary = async (req, res) => {
 //     // =============================
 //     const logs = await zk.getAttendances();
 
-//     if (!logs || !logs.data) {
+//     if (!logs || !logs.data || logs.data.length === 0) {
 //       console.log("⚠️ No logs received");
 //       return;
 //     }
 
 //     // =============================
-//     // 🔁 PROCESS LOGS
+//     // 🔁 PROCESS ONLY NEW LOGS
 //     // =============================
 //     for (let log of logs.data) {
 //       const id = String(log.deviceUserId).trim();
 //       const logTime = new Date(log.recordTime);
 
-//       console.log("📌 DEVICE LOG:", id);
+//       // 🔥 SKIP OLD LOGS
+//       if (lastProcessedTime && logTime <= lastProcessedTime) {
+//         continue;
+//       }
+
+//       console.log("🔥 NEW LOG:", id);
 
 //       const realName = userMap[id] || `User ${id}`;
 //       const date = logTime.toISOString().split("T")[0];
@@ -417,7 +425,7 @@ exports.getSummary = async (req, res) => {
 //       );
 
 //       // =============================
-//       // 🔍 CHECK EXISTING RECORD (PER DAY)
+//       // 🔍 CHECK RECORD
 //       // =============================
 //       let record = await Attendance.findOne({
 //         employee: employee._id,
@@ -436,8 +444,6 @@ exports.getSummary = async (req, res) => {
 //         });
 
 //         console.log(`✅ CHECK-IN: ${realName}`);
-
-//         if (io) io.emit("attendance_update");
 //       }
 
 //       // =============================
@@ -448,16 +454,17 @@ exports.getSummary = async (req, res) => {
 //         await record.save();
 
 //         console.log(`🚪 CHECK-OUT: ${realName}`);
-
-//         if (io) io.emit("attendance_update");
 //       }
 
 //       // =============================
-//       // ⛔ IGNORE EXTRA SCANS
+//       // 🔥 UPDATE LAST TIME
 //       // =============================
-//       else {
-//         console.log(`⛔ ALREADY DONE: ${realName}`);
-//       }
+//       lastProcessedTime = logTime;
+
+//       // =============================
+//       // 🔥 REALTIME UPDATE
+//       // =============================
+//       if (io) io.emit("attendance_update");
 //     }
 
 //     await zk.disconnect();
@@ -467,12 +474,7 @@ exports.getSummary = async (req, res) => {
 //     console.log("❌ ZK ERROR:", err.message);
 //   }
 // };
-
-
-// 🔥 keep last processed log (GLOBAL)
 let lastProcessedTime = null;
-
-
 
 const syncDevice = async (io) => {
   const zk = new ZKLib("192.168.1.201", 4370, 10000, 4000);
@@ -507,9 +509,16 @@ const syncDevice = async (io) => {
     }
 
     // =============================
-    // 🔁 PROCESS ONLY NEW LOGS
+    // 🔥 SORT LOGS (VERY IMPORTANT)
     // =============================
-    for (let log of logs.data) {
+    const sortedLogs = logs.data.sort(
+      (a, b) => new Date(a.recordTime) - new Date(b.recordTime)
+    );
+
+    // =============================
+    // 🔁 PROCESS LOGS
+    // =============================
+    for (let log of sortedLogs) {
       const id = String(log.deviceUserId).trim();
       const logTime = new Date(log.recordTime);
 
@@ -521,7 +530,11 @@ const syncDevice = async (io) => {
       console.log("🔥 NEW LOG:", id);
 
       const realName = userMap[id] || `User ${id}`;
-      const date = logTime.toISOString().split("T")[0];
+
+      // 🔥 FIX TIMEZONE (Somalia +3)
+      const date = new Date(logTime.getTime() + 3 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
 
       // =============================
       // 🔥 CREATE / UPDATE EMPLOYEE
@@ -556,27 +569,34 @@ const syncDevice = async (io) => {
         });
 
         console.log(`✅ CHECK-IN: ${realName}`);
+
+        if (io) io.emit("attendance_update");
       }
 
       // =============================
-      // 🚪 CHECK-OUT
+      // 🚪 CHECK-OUT (FIXED)
       // =============================
       else if (!record.checkOut) {
+        const diff = logTime - new Date(record.checkIn);
+
+        // ❗ ignore duplicate scans (less than 5 minutes)
+        if (diff < 300000) {
+          console.log(`⛔ IGNORE DUPLICATE: ${realName}`);
+          continue;
+        }
+
         record.checkOut = logTime;
         await record.save();
 
         console.log(`🚪 CHECK-OUT: ${realName}`);
+
+        if (io) io.emit("attendance_update");
       }
 
       // =============================
       // 🔥 UPDATE LAST TIME
       // =============================
       lastProcessedTime = logTime;
-
-      // =============================
-      // 🔥 REALTIME UPDATE
-      // =============================
-      if (io) io.emit("attendance_update");
     }
 
     await zk.disconnect();
@@ -586,6 +606,8 @@ const syncDevice = async (io) => {
     console.log("❌ ZK ERROR:", err.message);
   }
 };
+
+
 
 
 
