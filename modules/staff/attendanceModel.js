@@ -14,7 +14,7 @@ const attendanceSchema = new mongoose.Schema(
 },
     status: {
       type: String,
-      enum: ["Present", "Late"],
+      enum: ["Present", "Late","Absent"],
       default: "Present",
     },
     source: { type: String, default: "fingerprint" }, // audit

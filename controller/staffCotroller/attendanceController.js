@@ -635,3 +635,30 @@ exports.getReport = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+// absent
+
+exports.getAbsentToday = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    // 🔥 All employees
+    const employees = await Employee.find();
+
+    // 🔥 Today's attendance
+    const attendance = await Attendance.find({ date: today });
+
+    const presentIds = attendance.map(a => a.employee.toString());
+
+    // 🔥 Absent
+    const absent = employees.filter(e =>
+      !presentIds.includes(e._id.toString())
+    );
+
+    res.json(absent);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
