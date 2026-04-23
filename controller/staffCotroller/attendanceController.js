@@ -257,9 +257,22 @@ exports.scanFingerprint = async (req, res) => {
 // =============================
 // 📌 GET TODAY
 // =============================
+// exports.getToday = async (req, res) => {
+//   try {
+//     const date = today();
+
+//     const data = await Attendance.find({ date })
+//       .populate("employee", "name employeeId department")
+//       .sort({ createdAt: -1 });
+
+//     res.json(data);
+//   } catch (e) {
+//     res.status(500).json({ error: e.message });
+//   }
+// };
 exports.getToday = async (req, res) => {
   try {
-    const date = today();
+    const date = new Date().toISOString().split("T")[0];
 
     const data = await Attendance.find({ date })
       .populate("employee", "name employeeId department")
@@ -274,17 +287,70 @@ exports.getToday = async (req, res) => {
 // =============================
 // 📌 GET SUMMARY
 // =============================
+// exports.getSummary = async (req, res) => {
+//   try {
+//     const { from, to } = req.query;
+
+//     const data = await Attendance.find({
+//       date: { $gte: from, $lte: to },
+//     }).populate("employee", "name employeeId department");
+
+//     res.json(data);
+//   } catch (e) {
+//     res.status(500).json({ error: e.message });
+//   }
+// };
 exports.getSummary = async (req, res) => {
   try {
-    const { from, to } = req.query;
+    const { startDate, endDate, department } = req.query;
 
-    const data = await Attendance.find({
-      date: { $gte: from, $lte: to },
-    }).populate("employee", "name employeeId department");
+    // 🔥 all employees
+    let employees = await Employee.find();
 
-    res.json(data);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    if (department) {
+      employees = employees.filter(e => e.department === department);
+    }
+
+    // 🔥 attendance in range
+    const attendance = await Attendance.find({
+      date: { $gte: startDate, $lte: endDate },
+    }).populate("employee");
+
+    // 🔥 group by date
+    const summary = {};
+
+    attendance.forEach((a) => {
+      if (!summary[a.date]) {
+        summary[a.date] = {
+          date: a.date,
+          present: 0,
+          late: 0,
+          employees: [],
+        };
+      }
+
+      summary[a.date].present++;
+
+      if (a.status === "Late") {
+        summary[a.date].late++;
+      }
+
+      summary[a.date].employees.push(a.employee._id.toString());
+    });
+
+    // 🔥 ADD ABSENT
+    Object.keys(summary).forEach((date) => {
+      const presentIds = summary[date].employees;
+
+      const absent = employees.length - presentIds.length;
+
+      summary[date].absent = absent;
+    });
+
+    res.json(Object.values(summary));
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -300,7 +366,7 @@ exports.getSummary = async (req, res) => {
 //     console.log("✅ Device Connected");
 
 //     // =============================
-//     // 🔥 GET USERS (NAME FROM DEVICE)
+//     // 🔥 GET USERS
 //     // =============================
 //     const users = await zk.getUsers();
 
@@ -311,14 +377,12 @@ exports.getSummary = async (req, res) => {
 
 //       users.data.forEach((u) => {
 //         const id = String(u.userId).trim();
-
-//         userMap[id] =
-//           u.name?.trim() || u.cardNo || `User ${id}`;
+//         userMap[id] = u.name?.trim() || `User ${id}`;
 //       });
 //     }
 
 //     // =============================
-//     // 🔥 GET ATTENDANCE LOGS
+//     // 🔥 GET LOGS
 //     // =============================
 //     const logs = await zk.getAttendances();
 
@@ -332,13 +396,16 @@ exports.getSummary = async (req, res) => {
 //     // =============================
 //     for (let log of logs.data) {
 //       const id = String(log.deviceUserId).trim();
+//       const logTime = new Date(log.recordTime);
 
 //       console.log("📌 DEVICE LOG:", id);
 
-//       // 🔥 GET REAL NAME
 //       const realName = userMap[id] || `User ${id}`;
+//       const date = logTime.toISOString().split("T")[0];
 
-//       // 🔥 AUTO CREATE / UPDATE EMPLOYEE
+//       // =============================
+//       // 🔥 CREATE / UPDATE EMPLOYEE
+//       // =============================
 //       let employee = await Employee.findOneAndUpdate(
 //         { fingerprintId: id },
 //         {
@@ -349,17 +416,13 @@ exports.getSummary = async (req, res) => {
 //         { new: true, upsert: true }
 //       );
 
-//       const date = log.recordTime.toISOString().split("T")[0];
-
+//       // =============================
+//       // 🔍 CHECK EXISTING RECORD (PER DAY)
+//       // =============================
 //       let record = await Attendance.findOne({
 //         employee: employee._id,
 //         date,
 //       });
-
-//       // 🔥 SKIP haddii hore loo dhameeyay
-//       if (record && record.checkIn && record.checkOut) {
-//         continue;
-//       }
 
 //       // =============================
 //       // ✅ CHECK-IN
@@ -368,7 +431,7 @@ exports.getSummary = async (req, res) => {
 //         await Attendance.create({
 //           employee: employee._id,
 //           date,
-//           checkIn: log.recordTime,
+//           checkIn: logTime,
 //           status: isLate(9) ? "Late" : "Present",
 //         });
 
@@ -381,12 +444,19 @@ exports.getSummary = async (req, res) => {
 //       // 🚪 CHECK-OUT
 //       // =============================
 //       else if (!record.checkOut) {
-//         record.checkOut = log.recordTime;
+//         record.checkOut = logTime;
 //         await record.save();
 
 //         console.log(`🚪 CHECK-OUT: ${realName}`);
 
 //         if (io) io.emit("attendance_update");
+//       }
+
+//       // =============================
+//       // ⛔ IGNORE EXTRA SCANS
+//       // =============================
+//       else {
+//         console.log(`⛔ ALREADY DONE: ${realName}`);
 //       }
 //     }
 
@@ -394,9 +464,15 @@ exports.getSummary = async (req, res) => {
 //     console.log("🔌 Device Disconnected");
 
 //   } catch (err) {
-//     console.log("❌ ZK SAFE ERROR:", err.message);
+//     console.log("❌ ZK ERROR:", err.message);
 //   }
 // };
+
+
+// 🔥 keep last processed log (GLOBAL)
+let lastProcessedTime = null;
+
+
 
 const syncDevice = async (io) => {
   const zk = new ZKLib("192.168.1.201", 4370, 10000, 4000);
@@ -409,7 +485,6 @@ const syncDevice = async (io) => {
     // 🔥 GET USERS
     // =============================
     const users = await zk.getUsers();
-
     const userMap = {};
 
     if (users && users.data) {
@@ -426,30 +501,27 @@ const syncDevice = async (io) => {
     // =============================
     const logs = await zk.getAttendances();
 
-    if (!logs || !logs.data) {
+    if (!logs || !logs.data || logs.data.length === 0) {
       console.log("⚠️ No logs received");
       return;
     }
 
     // =============================
-    // 🔁 PROCESS LOGS
+    // 🔁 PROCESS ONLY NEW LOGS
     // =============================
     for (let log of logs.data) {
       const id = String(log.deviceUserId).trim();
-
-      console.log("📌 DEVICE LOG:", id);
-
-      const realName = userMap[id] || `User ${id}`;
-
-      // =============================
-      // 🔥 IGNORE OLD LOGS (IMPORTANT)
-      // =============================
-      const now = new Date();
       const logTime = new Date(log.recordTime);
 
-      if (now - logTime > 60000) {
-        continue; // skip old logs
+      // 🔥 SKIP OLD LOGS
+      if (lastProcessedTime && logTime <= lastProcessedTime) {
+        continue;
       }
+
+      console.log("🔥 NEW LOG:", id);
+
+      const realName = userMap[id] || `User ${id}`;
+      const date = logTime.toISOString().split("T")[0];
 
       // =============================
       // 🔥 CREATE / UPDATE EMPLOYEE
@@ -464,31 +536,42 @@ const syncDevice = async (io) => {
         { new: true, upsert: true }
       );
 
-      const date = logTime.toISOString().split("T")[0];
-
       // =============================
-      // 🔥 PREVENT DUPLICATE
+      // 🔍 CHECK RECORD
       // =============================
-      const existing = await Attendance.findOne({
+      let record = await Attendance.findOne({
         employee: employee._id,
-        checkIn: logTime,
+        date,
       });
 
-      if (existing) {
-        continue;
+      // =============================
+      // ✅ CHECK-IN
+      // =============================
+      if (!record) {
+        await Attendance.create({
+          employee: employee._id,
+          date,
+          checkIn: logTime,
+          status: isLate(9) ? "Late" : "Present",
+        });
+
+        console.log(`✅ CHECK-IN: ${realName}`);
       }
 
       // =============================
-      // ✅ ALWAYS SAVE NEW LOG
+      // 🚪 CHECK-OUT
       // =============================
-      await Attendance.create({
-        employee: employee._id,
-        date,
-        checkIn: logTime,
-        status: isLate(9) ? "Late" : "Present",
-      });
+      else if (!record.checkOut) {
+        record.checkOut = logTime;
+        await record.save();
 
-      console.log(`🔥 SAVED TO DB: ${realName}`);
+        console.log(`🚪 CHECK-OUT: ${realName}`);
+      }
+
+      // =============================
+      // 🔥 UPDATE LAST TIME
+      // =============================
+      lastProcessedTime = logTime;
 
       // =============================
       // 🔥 REALTIME UPDATE
@@ -500,9 +583,11 @@ const syncDevice = async (io) => {
     console.log("🔌 Device Disconnected");
 
   } catch (err) {
-    console.log("❌ ZK SAFE ERROR:", err.message);
+    console.log("❌ ZK ERROR:", err.message);
   }
 };
+
+
 
 exports.syncDevice = syncDevice;
 
@@ -513,6 +598,39 @@ exports.syncZKTeco = async (req, res) => {
   try {
     await syncDevice();
     res.json({ message: "Synced & Saved to DB ✅" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
+// controller
+exports.getReport = async (req, res) => {
+  try {
+    const { startDate, endDate, department, name } = req.query;
+
+    let filter = {};
+
+    // 📅 DATE RANGE
+    if (startDate && endDate) {
+      filter.date = { $gte: startDate, $lte: endDate };
+    }
+
+    let query = Attendance.find(filter).populate("employee");
+
+    let data = await query;
+
+    // 🔍 FILTER NAME + DEPARTMENT
+    data = data.filter((item) => {
+      const emp = item.employee;
+
+      return (
+        (name ? emp?.name?.toLowerCase().includes(name.toLowerCase()) : true) &&
+        (department ? emp?.department === department : true)
+      );
+    });
+
+    res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
