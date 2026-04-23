@@ -684,3 +684,91 @@ exports.getAbsentToday = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// =============================
+// 🔥 RECEIVE FROM LOCAL DEVICE (IMPORTANT)
+// =============================
+exports.syncFromDevice = async (req, res) => {
+  try {
+    const { users, logs } = req.body;
+
+    if (!logs || logs.length === 0) {
+      return res.json({ message: "No logs received" });
+    }
+
+    console.log("📥 Received logs from local device");
+
+    // 🔥 CREATE USER MAP
+    const userMap = {};
+
+    if (users && users.length > 0) {
+      users.forEach((u) => {
+        const id = String(u.userId).trim();
+        userMap[id] = u.name?.trim() || `User ${id}`;
+      });
+    }
+
+    // 🔥 SORT LOGS
+    const sortedLogs = logs.sort(
+      (a, b) => new Date(a.recordTime) - new Date(b.recordTime)
+    );
+
+    for (let log of sortedLogs) {
+      const id = String(log.deviceUserId).trim();
+      const logTime = new Date(log.recordTime);
+
+      const realName = userMap[id] || `User ${id}`;
+
+      // 🔥 FIX TIMEZONE
+      const date = new Date(logTime.getTime() + 3 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0];
+
+      let employee = await Employee.findOneAndUpdate(
+        { fingerprintId: id },
+        {
+          name: realName,
+          employeeId: id,
+          fingerprintId: id,
+        },
+        { new: true, upsert: true }
+      );
+
+      let record = await Attendance.findOne({
+        employee: employee._id,
+        date,
+      });
+
+      // ✅ CHECK-IN
+      if (!record) {
+        await Attendance.create({
+          employee: employee._id,
+          date,
+          checkIn: logTime,
+          status: isLate(9) ? "Late" : "Present",
+        });
+
+        console.log(`✅ CHECK-IN: ${realName}`);
+      }
+
+      // 🚪 CHECK-OUT (SAFE)
+      else if (!record.checkOut) {
+        const diff = logTime - new Date(record.checkIn);
+
+        if (diff < 300000) {
+          continue;
+        }
+
+        record.checkOut = logTime;
+        await record.save();
+
+        console.log(`🚪 CHECK-OUT: ${realName}`);
+      }
+    }
+
+    res.json({ message: "Synced successfully ✅" });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
