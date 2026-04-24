@@ -876,3 +876,72 @@ exports.syncFromDevice = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+
+// 
+
+// helper: get all dates between range
+const getDatesBetween = (start, end) => {
+  const dates = [];
+  let current = new Date(start);
+
+  while (current <= end) {
+    dates.push(current.toISOString().split("T")[0]);
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+};
+
+// ================= ABSENT RANGE =================
+exports.getAbsentRange = async (req, res) => {
+  try {
+    let { startDate, endDate, name, department } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: "startDate and endDate required" });
+    }
+
+    const dates = getDatesBetween(new Date(startDate), new Date(endDate));
+
+    // 🔥 get employees with filters
+    const empFilter = {};
+    if (name) empFilter.name = name;
+    if (department) empFilter.department = department;
+
+    const employees = await Employee.find(empFilter);
+
+    let result = [];
+
+    for (let emp of employees) {
+      let absentCount = 0;
+
+      for (let date of dates) {
+        const record = await Attendance.findOne({
+          employee: emp._id,
+          date,
+        });
+
+        if (!record) {
+          absentCount++;
+        }
+      }
+
+      // push only haddii uu maqnaa ugu yaraan hal maalin
+      if (absentCount > 0) {
+        result.push({
+          _id: emp._id,
+          name: emp.name,
+          department: emp.department,
+          absentCount,
+        });
+      }
+    }
+
+    res.json(result);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
