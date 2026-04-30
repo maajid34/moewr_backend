@@ -35,22 +35,38 @@ const path = require("path");
 
 
 
-app.use(cors({
-  origin: [
-    'https://moewr-frontend.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'https://moewr-jubalandstate.so',
-    'https://admin.moewr-jubalandstate.so',
-  ],
-  credentials: true,
-}));
+// app.use(cors({
+//   origin: [
+//     'https://moewr-frontend.vercel.app',
+//     'http://localhost:5173',
+//     'http://localhost:5174',
+//     'https://moewr-jubalandstate.so',
+//     'https://admin.moewr-jubalandstate.so',
+//   ],
+//   credentials: true,
+// }));
 
 
 
 //  mongoose.connect("mongodb://localhost:27017/Moewr_jubaland").then(() =>{
 //     console.log("success connection")
 // })
+
+
+app.use(cors({
+  origin: [
+    "https://moewr-frontend.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://moewr-jubalandstate.so",
+    "https://admin.moewr-jubalandstate.so",
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+}));
+
+
 
 
 mongoose.connect(process.env.db_url).then(() => console.log("connection is succesfully"))
