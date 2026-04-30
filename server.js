@@ -31,6 +31,10 @@ app.use(express.json())
 // app.use(cors())
 
 const path = require("path");
+// ✅ HALKAN KU DAR
+app.get("/", (req, res) => {
+  res.send("OK");
+});
 
 
 
