@@ -133,12 +133,14 @@ process.on("unhandledRejection", (err) => {
   console.log("🔥 Promise Error:", err);
 });
 // instead of app.listen
-server.listen(process.env.port, () =>
-  console.log("server is running")
-);
+// server.listen(process.env.port, () =>
+//   console.log("server is running")
+// );
+server.listen(process.env.PORT || 3000, () => {
+  console.log("server is running on port", process.env.PORT);
+});
 
-//  app.listen(3000, () => console.log("server is running"))
-// app.listen(process.env.port, () => console.log(`server is running`))
+
 
 
 // lates sarevr
