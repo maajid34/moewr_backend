@@ -31,12 +31,15 @@ app.use(express.json())
 // app.use(cors())
 
 const path = require("path");
-// ✅ HALKAN KU DAR
+
+// health check
 app.get("/", (req, res) => {
   res.send("OK");
 });
 
-
+app.get("/health", (req, res) => {
+  res.json({ status: "OK" });
+});
 
 
 // app.use(cors({
