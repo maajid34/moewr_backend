@@ -41,6 +41,9 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
+app.get("/fast", (req, res) => {
+  res.send("FAST OK");
+});
 
 // app.use(cors({
 //   origin: [
