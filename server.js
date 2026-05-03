@@ -75,8 +75,13 @@ app.use(cors({
 
 
 
-
-mongoose.connect(process.env.db_url).then(() => console.log("connection is succesfully"))
+// database connection
+// mongoose.connect(process.env.db_url).then(() => console.log("connection is succesfully"))
+mongoose.connect(process.env.db_url)
+  .then(() => console.log("connection is successfully"))
+  .catch((err) => {
+    console.error("MongoDB connection error:", err.message);
+  });
 
 
 // ROUTER HALKAAN UGU WACDAY
@@ -132,7 +137,10 @@ process.on("unhandledRejection", (err) => {
 // server.listen(process.env.port, () =>
 //   console.log("server is running")
 // );
-server.listen(process.env.PORT || 3000, () => {
+// server.listen(process.env.PORT || 3000, () => {
+//   console.log("server is running on port", process.env.PORT);
+// });
+server.listen(process.env.PORT || 3000, "0.0.0.0", () => {
   console.log("server is running on port", process.env.PORT);
 });
 
