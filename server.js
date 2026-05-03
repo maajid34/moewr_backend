@@ -143,7 +143,7 @@ process.on("unhandledRejection", (err) => {
 // server.listen(process.env.PORT || 3000, () => {
 //   console.log("server is running on port", process.env.PORT);
 // });
-server.listen(process.env.PORT || 3000, "0.0.0.0", () => {
+server.listen(process.env.PORT || 8080, "0.0.0.0", () => {
   console.log("server is running on port", process.env.PORT);
 });
 
