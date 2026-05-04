@@ -272,7 +272,10 @@ exports.scanFingerprint = async (req, res) => {
 // };
 exports.getToday = async (req, res) => {
   try {
-    const date = new Date().toISOString().split("T")[0];
+    // const date = new Date().toISOString().split("T")[0];
+    const date = new Date(Date.now() + 3 * 60 * 60 * 1000)
+  .toISOString()
+  .split("T")[0];
 
     const data = await Attendance.find({ date })
       .populate("employee", "name employeeId department")
@@ -627,32 +630,67 @@ exports.syncZKTeco = async (req, res) => {
 
 
 // controller
+// exports.getReport = async (req, res) => {
+//   try {
+//     const { startDate, endDate, department, name } = req.query;
+
+//     let filter = {};
+
+//     // 📅 DATE RANGE
+//     if (startDate && endDate) {
+//       filter.date = { $gte: startDate, $lte: endDate };
+//     }
+
+//     let query = Attendance.find(filter).populate("employee");
+
+//     let data = await query;
+
+//     // 🔍 FILTER NAME + DEPARTMENT
+//     data = data.filter((item) => {
+//       const emp = item.employee;
+
+//       return (
+//         (name ? emp?.name?.toLowerCase().includes(name.toLowerCase()) : true) &&
+//         (department ? emp?.department === department : true)
+//       );
+//     });
+
+//     res.json(data);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 exports.getReport = async (req, res) => {
   try {
-    const { startDate, endDate, department, name } = req.query;
+    let { startDate, endDate, department, name } = req.query;
 
     let filter = {};
 
-    // 📅 DATE RANGE
-    if (startDate && endDate) {
-      filter.date = { $gte: startDate, $lte: endDate };
+    // ✅ DATE FILTER FIX
+    if (startDate || endDate) {
+      filter.date = {};
+
+      if (startDate) filter.date.$gte = startDate;
+      if (endDate) filter.date.$lte = endDate;
     }
 
-    let query = Attendance.find(filter).populate("employee");
+    let data = await Attendance.find(filter)
+      .populate("employee", "name department employeeId")
+      .sort({ date: -1, checkIn: -1 });
 
-    let data = await query;
-
-    // 🔍 FILTER NAME + DEPARTMENT
+    // ✅ NAME + DEPARTMENT FILTER
     data = data.filter((item) => {
       const emp = item.employee;
+      if (!emp) return false;
 
       return (
-        (name ? emp?.name?.toLowerCase().includes(name.toLowerCase()) : true) &&
-        (department ? emp?.department === department : true)
+        (name ? emp.name.toLowerCase().includes(name.toLowerCase()) : true) &&
+        (department ? emp.department === department : true)
       );
     });
 
     res.json(data);
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
