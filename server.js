@@ -125,10 +125,10 @@ app.set("io", io);
 const { syncDevice } = require("./controller/staffCotroller/attendanceController.js");
 
 
-// cron.schedule("*/1 * * * *", async () => {
-//   console.log("⏱ Syncing device...");
-//   await syncDevice(io);
-// });
+cron.schedule("*/1 * * * *", async () => {
+  console.log("⏱ Syncing device...");
+  await syncDevice(io);
+});
 process.on("uncaughtException", (err) => {
   console.log("🔥 Uncaught Error:", err.message);
 });
