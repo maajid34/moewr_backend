@@ -214,7 +214,9 @@ exports.scanFingerprint = async (req, res) => {
       });
 
       // 🔥 REALTIME
-      io.emit("attendance_update");
+      // io.emit("attendance_update");
+      const io = req.app.get("io");
+if (io) io.emit("attendance_update");
 
       return res.json({
         message: `Check-in ${employee.name}`,
@@ -233,7 +235,9 @@ exports.scanFingerprint = async (req, res) => {
       record.checkOut = new Date();
       await record.save();
 
-      io.emit("attendance_update");
+      // io.emit("attendance_update");
+      const io = req.app.get("io");
+if (io) io.emit("attendance_update");
 
       return res.json({
         message: `Check-out ${employee.name}`,
@@ -874,17 +878,33 @@ exports.syncFromDevice = async (req, res) => {
       // =============================
       // ✅ CHECK-IN
       // =============================
-      if (!record) {
-        await Attendance.create({
-          employee: employee._id,
-          date,
-          checkIn: logTime,
-          status: isLate(9) ? "Late" : "Present",
-        });
+      // if (!record) {
+      //   await Attendance.create({
+      //     employee: employee._id,
+      //     date,
+      //     checkIn: logTime,
+      //     status: isLate(9) ? "Late" : "Present",
+      //   });
 
-        console.log(`✅ CHECK-IN: ${realName}`);
-        continue;
-      }
+      //   console.log(`✅ CHECK-IN: ${realName}`);
+      //   continue;
+      // }
+      if (!record) {
+  await Attendance.create({
+    employee: employee._id,
+    date,
+    checkIn: logTime,
+    status: isLate(9) ? "Late" : "Present",
+  });
+
+  console.log(`✅ CHECK-IN: ${realName}`);
+
+  // 🔥 ADD THIS
+  const io = req.app.get("io");
+  if (io) io.emit("attendance_update");
+
+  continue;
+}
 
       // =============================
       // 🚪 CHECK-OUT (SAFE)
@@ -901,7 +921,12 @@ exports.syncFromDevice = async (req, res) => {
         record.checkOut = logTime;
         await record.save();
 
+        // console.log(`🚪 CHECK-OUT: ${realName}`);
         console.log(`🚪 CHECK-OUT: ${realName}`);
+
+// 🔥 ADD THIS
+const io = req.app.get("io");
+if (io) io.emit("attendance_update");
       }
     }
 
