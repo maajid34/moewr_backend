@@ -274,14 +274,14 @@ const {
   syncDevice,
 } = require("./controller/staffCotroller/attendanceController.js");
 
-cron.schedule("*/1 * * * *", async () => {
-  try {
-    console.log("⏱ Syncing device...");
-    await syncDevice(io);
-  } catch (err) {
-    console.log("Sync error:", err.message);
-  }
-});
+// cron.schedule("*/1 * * * *", async () => {
+//   try {
+//     console.log("⏱ Syncing device...");
+//     await syncDevice(io);
+//   } catch (err) {
+//     console.log("Sync error:", err.message);
+//   }
+// });
 
 process.on("uncaughtException", (err) => {
   console.log("🔥 Uncaught Error:", err.message);
