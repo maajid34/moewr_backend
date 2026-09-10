@@ -80,7 +80,7 @@ const createAdmin = async (req, res) => {
 
     res.status(201).json({
       message: "Account created",
-      user,
+      user: { _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role },
     });
 
   } catch (error) {
@@ -176,10 +176,11 @@ const updateUser = async (req, res) => {
     const user = await customerModel.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true }
+      { new: true, runValidators: true }
     );
 
-    res.json({ message: "User updated", user });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User updated", user: { _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role } });
 
   } catch (error) {
     res.status(500).json({ message: "Update failed" });

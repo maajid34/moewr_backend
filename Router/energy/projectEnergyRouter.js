@@ -7,6 +7,7 @@ const {
 
 const AdminLogin = require("../../controller/login/loginCntrl");
 const { verifyToken, isAdmin } = require("../../middleWare/Auth");
+const { authenticateAccount, allowRoles } = require("../../middleWare/authenticateAccount");
 
 const router = express.Router();
 
@@ -104,11 +105,11 @@ router.get(
 // -------------------achiemnets
 
 // admin login
-router.post("/createAdmin", AdminLogin.createAdmin);
+router.post("/createAdmin", authenticateAccount, allowRoles("admin"), AdminLogin.createAdmin);
 router.post("/customerLogin", AdminLogin.AminLogin);
-router.get("/users", AdminLogin.getUsers);
-router.delete("/users/:id", AdminLogin.deleteUser);
-router.put("/users/:id", AdminLogin.updateUser);
+router.get("/users", authenticateAccount, allowRoles("admin"), AdminLogin.getUsers);
+router.delete("/users/:id", authenticateAccount, allowRoles("admin"), AdminLogin.deleteUser);
+router.put("/users/:id", authenticateAccount, allowRoles("admin"), AdminLogin.updateUser);
 
 
 

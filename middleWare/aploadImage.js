@@ -19,7 +19,7 @@
 
 
 // utils/uploadR2.js
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require("@aws-sdk/client-s3");
 const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
@@ -52,15 +52,16 @@ const uploadBuffer = multer({
 //   },
 // });
 
-const s3 = new S3Client({
-  region: "auto",
-  endpoint: process.env.S3_ENDPOINT,
-  forcePathStyle: true, // 🔥 THIS IS THE FIX
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY,
-    secretAccessKey: process.env.S3_SECRET_KEY,
-  },
-});
+let s3;
+function storageClient() {
+  if (s3) return s3;
+  const endpoint = process.env.S3_ENDPOINT || (process.env.R2_ACCOUNT_ID && `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`);
+  const accessKeyId = process.env.S3_ACCESS_KEY || process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.S3_SECRET_KEY || process.env.R2_SECRET_ACCESS_KEY;
+  if (!endpoint || !accessKeyId || !secretAccessKey) throw new Error('Storage is not configured');
+  s3 = new S3Client({ region: 'auto', endpoint, forcePathStyle: true, credentials: { accessKeyId, secretAccessKey } });
+  return s3;
+}
 
 
 
@@ -72,9 +73,10 @@ function makeObjectKey(originalName, folder = "uploads") {
   return `${folder}/${Date.now()}_${base}_${rand}${ext}`;
 }
 
-async function putImageToR2(buffer, mimeType, key) {
-  await s3.send(new PutObjectCommand({
-    Bucket: process.env.S3_BUCKET,
+async function putImageToR2(buffer, mimeType, key, bucket = process.env.S3_BUCKET) {
+  if (!bucket) throw new Error('Storage bucket is not configured');
+  await storageClient().send(new PutObjectCommand({
+    Bucket: bucket,
     Key: key,
     Body: buffer,
     ContentType: mimeType,
@@ -91,26 +93,17 @@ function buildPublicUrl(key) {
   return `/r2/${key}`; // placeholder so you see when S3_PUBLIC_BASE is missing
 }
 
-async function testUpload() {
-  await s3.send(new PutObjectCommand({
-    Bucket: "moewr-uploads",
-    Key: "water/cover/test.jpg",
-    Body: Buffer.from("hello"),
-  }));
-  console.log("Upload success");
+async function deleteObjectFromR2(key, bucket) {
+  return storageClient().send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
-
-// call it
-testUpload();
-
-
-
-console.log("R2_ACCESS_KEY:", process.env.S3_ACCESS_KEY);
-console.log("R2_SECRET_KEY:", process.env.S3_SECRET_KEY);
-console.log("R2_ENDPOINT:", process.env.S3_ENDPOINT);
+async function getObjectFromR2(key, bucket) {
+  return storageClient().send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+}
 module.exports = {
   uploadBuffer,
   makeObjectKey,
   putImageToR2,
   buildPublicUrl,
+  deleteObjectFromR2,
+  getObjectFromR2,
 };
