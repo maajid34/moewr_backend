@@ -241,6 +241,9 @@ mongoose
     console.error("MongoDB connection error:", err.message);
   });
 
+// Fail fast for the four public homepage reads when MongoDB is unavailable.
+app.get(['/readProjectEnergyStage', '/readStageProjectWater', '/api/sumaryachievements', '/readProjectEvent/Event'], require('./middleWare/requireDatabaseReady'));
+
 app.use(projectEnergyRouter);
 app.use(projectWaterRouter);
 app.use(EventRouter);
