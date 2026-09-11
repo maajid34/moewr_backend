@@ -226,6 +226,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 startDatabase(mongoose, databaseUri);
 // Apply to every database route, including projects, registry, staff and uploads.
 app.use(require('./middleWare/requireDatabaseReady'));
+app.use('/api/public', require('./Router/waterPoint/publicWaterRoutes'));
 // Registry owns its authentication and bounded parsers.
 app.use("/api/water-registry", require("./Router/waterPoint/waterPointRoutes"));
 app.use(express.json({ limit: "50mb" }));

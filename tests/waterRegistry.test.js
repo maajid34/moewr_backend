@@ -845,3 +845,26 @@ test("legacy Water Project create/read/update stays independent of WaterPoint", 
   );
   assert.equal(await WaterPoint.countDocuments(), count);
 });
+
+// Public reads use a separate router and explicit projection, without a token.
+test('public snapshot reads registered points, excludes archives and private fields', async () => {
+  const publicApp = express();
+  publicApp.use('/api/public', require('../Router/waterPoint/publicWaterRoutes'));
+  const marker = 'PUBLIC-PROJECTION-TEST';
+  const active = await WaterPoint.collection.insertOne({ waterPointCode: marker, waterSourceType: 'BOREHOLE', status: 'FUNCTIONAL', isActive: true, region: region._id, district: district._id, villageOrSite: 'Public village', location: { type: 'Point', coordinates: [42, 1] }, notes: 'PRIVATE-NOTE', documents: [{ key: 'PRIVATE-DOCUMENT' }], createdBy: users.admin._id });
+  const archived = await WaterPoint.collection.insertOne({ waterPointCode: 'PRIVATE-ARCHIVE', waterSourceType: 'BOREHOLE', status: 'FUNCTIONAL', isActive: false, region: region._id, district: district._id });
+  try {
+    const expected = await WaterPoint.countDocuments({ isActive: true });
+    const response = await request(publicApp).get('/api/public/water-infrastructure');
+    assert.equal(response.status, 200);
+    assert.equal(response.body.public, true);
+    assert.equal(response.body.summary.total, expected);
+    const feature = response.body.gis.features.find(f => f.properties.code === marker);
+    assert.equal(feature.properties.type, 'Borehole');
+    assert.equal(feature.properties.status, 'Functional');
+    assert.deepEqual(feature.geometry.coordinates, [42, 1]);
+    assert.deepEqual(Object.keys(feature.properties).sort(), ['code','district','region','status','type','village']);
+    assert.ok(!JSON.stringify(response.body).match(/PRIVATE-|createdBy|documents|notes/));
+    assert.equal((await request(publicApp).post('/api/public/water-infrastructure')).status, 404);
+  } finally { await WaterPoint.deleteMany({ _id: { $in: [active.insertedId, archived.insertedId] } }); }
+});
