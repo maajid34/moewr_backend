@@ -39,3 +39,19 @@ test('safe connection diagnostics classify authentication and DNS failures', () 
   assert.equal(failureCategory({ code: 18 }), 'AUTHENTICATION');
   assert.equal(failureCategory({ message: 'querySrv ENOTFOUND' }), 'DNS');
 });
+
+test('missing URI cannot crash startup; configuration failure retries and can recover', async () => {
+  let env = {}; let retry; let attempts = 0; const logs = [];
+  const fake = { connect: async () => { attempts++; } };
+  assert.doesNotThrow(() => startDatabase(fake, () => databaseUri(env), {
+    logger: { error: message => logs.push(message), info: message => logs.push(message) },
+    schedule: fn => { retry = fn; return 1; },
+  }));
+  assert.equal(attempts, 0);
+  assert.match(logs[0], /MISSING_OR_INVALID_URI/);
+  assert.equal(typeof retry, 'function');
+  env = { db_url: 'mongodb://example/db' };
+  await retry();
+  assert.equal(attempts, 1);
+  assert.ok(logs.includes('MongoDB connected'));
+});

@@ -1,13 +1,16 @@
 function databaseUri(env = process.env) {
   const uri = (env.db_url || env.MONGODB_URI || env.MONGO_URI || env.MONGO_URL || '').trim();
   if (!/^mongodb(?:\+srv)?:\/\//.test(uri)) {
-    throw new Error('Set db_url (or MONGODB_URI) to a valid MongoDB connection URI.');
+    const error = new Error('Set db_url (or MONGODB_URI) to a valid MongoDB connection URI.');
+    error.code = 'DATABASE_CONFIG_INVALID';
+    throw error;
   }
   return uri;
 }
 
 // Never log driver messages: they can contain connection credentials.
 function failureCategory(error) {
+  if (error.code === 'DATABASE_CONFIG_INVALID') return 'MISSING_OR_INVALID_URI';
   if (error.code === 18 || /authentication failed|bad auth/i.test(error.message || '')) return 'AUTHENTICATION';
   if (/ENOTFOUND|querySrv|EAI_AGAIN/i.test(error.message || '')) return 'DNS';
   return 'CONNECTION_UNAVAILABLE';
@@ -18,7 +21,10 @@ function startDatabase(mongoose, uri, { logger = console, retryMs = 5000, schedu
   let timer;
   async function connect() {
     try {
-      await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000, connectTimeoutMS: 10000 });
+      // Resolve configuration inside the guarded attempt so a bad URI cannot
+      // terminate HTTP startup and turn a database outage into a proxy 502.
+      const resolvedUri = typeof uri === 'function' ? uri() : uri;
+      await mongoose.connect(resolvedUri, { serverSelectionTimeoutMS: 10000, connectTimeoutMS: 10000 });
       logger.info('MongoDB connected');
       // After a successful initial connection, the MongoDB driver handles reconnection.
     } catch (error) {

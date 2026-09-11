@@ -156,7 +156,6 @@ require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 const express = require("express");
 const mongoose = require("mongoose");
 const { databaseUri, startDatabase, healthHandler } = require("./config/database");
-const mongoUri = databaseUri();
 const cors = require("cors");
 const path = require("path");
 const cron = require("node-cron");
@@ -224,7 +223,7 @@ app.get("/fast", (_req, res) => res.send("FAST OK"));
 app.get("/health", healthHandler(mongoose));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-startDatabase(mongoose, mongoUri);
+startDatabase(mongoose, databaseUri);
 // Apply to every database route, including projects, registry, staff and uploads.
 app.use(require('./middleWare/requireDatabaseReady'));
 // Registry owns its authentication and bounded parsers.
