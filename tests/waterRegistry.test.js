@@ -868,3 +868,30 @@ test('public snapshot reads registered points, excludes archives and private fie
     assert.equal((await request(publicApp).post('/api/public/water-infrastructure')).status, 404);
   } finally { await WaterPoint.deleteMany({ _id: { $in: [active.insertedId, archived.insertedId] } }); }
 });
+
+test('public directory filters, pagination and detail only expose active safe records', async () => {
+  const publicApp = express(); publicApp.use('/api/public', require('../Router/waterPoint/publicWaterRoutes'));
+  const fixture = Array.from({ length: 13 }, (_, i) => ({ waterPointCode: 'DIRECTORY-' + String(i).padStart(2, '0'), waterSourceType: i === 12 ? 'SHALLOW_WELL' : 'BOREHOLE', status: i === 12 ? 'NON_FUNCTIONAL' : 'FUNCTIONAL', isActive: true, region: new mongoose.Types.ObjectId(region._id), district: new mongoose.Types.ObjectId(district._id), villageOrSite: 'Search Village', location: { type: 'Point', coordinates: [42, 1] }, notes: 'SECRET-NOTE', photos: [{ url: 'SECRET-PHOTO' }], updatedAt: new Date() }));
+  fixture.push({ ...fixture[0], waterPointCode: 'DIRECTORY-ARCHIVE', isActive: false });
+  const inserted = await WaterPoint.collection.insertMany(fixture);
+  const endpoint = '/api/public/water-infrastructure/points';
+  try {
+    let response = await request(publicApp).get(endpoint).query({ q: 'DIRECTORY-' });
+    assert.equal(response.status, 200); assert.equal(response.body.total, 13); assert.equal(response.body.items.length, 12);
+    response = await request(publicApp).get(endpoint).query({ q: 'DIRECTORY-', page: 2 });
+    assert.equal(response.body.items.length, 1);
+    response = await request(publicApp).get(endpoint).query({ q: 'search village', region: String(region._id), district: String(district._id), type: 'SHALLOW_WELL', status: 'NON_FUNCTIONAL' });
+    assert.equal(response.body.total, 1); assert.equal(response.body.items[0].code, 'DIRECTORY-12');
+    assert.ok(response.body.regions.some(r => r.value === String(region._id)));
+    response = await request(publicApp).get(endpoint + '/DIRECTORY-00');
+    assert.equal(response.status, 200); assert.equal(response.body.item.code, 'DIRECTORY-00');
+    assert.deepEqual(Object.keys(response.body.item).sort(), ['code', 'coordinates', 'district', 'region', 'status', 'type', 'updatedAt', 'village']);
+    assert.ok(!JSON.stringify(response.body).match(/SECRET|photos|notes|createdBy/));
+    assert.equal((await request(publicApp).get(endpoint + '/DIRECTORY-ARCHIVE')).status, 404);
+    assert.equal((await request(publicApp).get(endpoint + '/NO-SUCH-CODE')).status, 404);
+    assert.equal((await request(publicApp).get(endpoint).query({ page: '-1' })).status, 400);
+    assert.equal((await request(publicApp).get(endpoint).query({ region: 'invalid' })).status, 400);
+    assert.equal((await request(publicApp).get(endpoint).query({ status: 'invalid' })).status, 400);
+    assert.equal((await request(publicApp).get(endpoint).query({ q: '.*' })).body.total, 0);
+  } finally { await WaterPoint.deleteMany({ _id: { $in: Object.values(inserted.insertedIds) } }); }
+});
