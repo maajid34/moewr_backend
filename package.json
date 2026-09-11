@@ -6,6 +6,7 @@
     "test": "node --test --test-concurrency=1 tests/*.test.js",
     "test:water-registry": "node --test --test-concurrency=1 tests/waterRegistry.test.js",
     "start": "node server.js",
+    "db:check": "node scripts/database-check.js",
     "registry:cleanup": "node scripts/registry-storage-cleanup.js"
   },
   "author": "",

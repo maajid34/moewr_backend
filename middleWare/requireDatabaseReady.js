@@ -1,5 +1,5 @@
 ﻿const mongoose = require('mongoose');
-// Public homepage reads must not queue queries while MongoDB is disconnected.
+// Database routes must not queue queries while MongoDB is disconnected.
 module.exports = (_req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
     res.set('Retry-After', '30');

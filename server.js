@@ -151,10 +151,12 @@
 
 
 // // lates sarevr
-require("dotenv").config();
+require("dotenv").config({ path: require("path").join(__dirname, ".env") });
 
 const express = require("express");
 const mongoose = require("mongoose");
+const { databaseUri, startDatabase, healthHandler } = require("./config/database");
+const mongoUri = databaseUri();
 const cors = require("cors");
 const path = require("path");
 const cron = require("node-cron");
@@ -216,33 +218,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// Registry owns its authentication and bounded parsers; preserve legacy mounts below.
-app.use("/api/water-registry", require("./Router/waterPoint/waterPointRoutes"));
+// Liveness/static content remain accessible while the database reconnects.
+app.get("/", (_req, res) => res.send("OK"));
+app.get("/fast", (_req, res) => res.send("FAST OK"));
+app.get("/health", healthHandler(mongoose));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+startDatabase(mongoose, mongoUri);
+// Apply to every database route, including projects, registry, staff and uploads.
+app.use(require('./middleWare/requireDatabaseReady'));
+// Registry owns its authentication and bounded parsers.
+app.use("/api/water-registry", require("./Router/waterPoint/waterPointRoutes"));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-
-app.get("/", (req, res) => {
-  res.send("OK");
-});
-
-app.get("/health", (req, res) => {
-  res.json({ status: "OK" });
-});
-
-app.get("/fast", (req, res) => {
-  res.send("FAST OK");
-});
-
-mongoose
-  .connect(process.env.db_url)
-  .then(() => console.log("MongoDB connection is successful"))
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-  });
-
-// Fail fast for the four public homepage reads when MongoDB is unavailable.
-app.get(['/readProjectEnergyStage', '/readStageProjectWater', '/api/sumaryachievements', '/readProjectEvent/Event'], require('./middleWare/requireDatabaseReady'));
 
 app.use(projectEnergyRouter);
 app.use(projectWaterRouter);
@@ -256,8 +244,6 @@ app.use("/api/sumaryachievements", sumaryRoutes);
 app.use("/api/employees", employeRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/upload", uploadRoutes);
-
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use((err, req, res, next) => {
   console.error("SERVER ERROR:", err);
