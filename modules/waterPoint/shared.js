@@ -1,5 +1,12 @@
 const mongoose = require("mongoose");
-const TYPES = ["BOREHOLE", "SHALLOW_WELL"];
+// const TYPES = ["BOREHOLE", "SHALLOW_WELL"];
+const TYPES = [
+  "BOREHOLE",
+  "SHALLOW_WELL",
+  "BARKAD",
+  "WATER_PAN",
+  "WATER_KIOSK",
+];
 const STATUSES = [
   "FUNCTIONAL",
   "NON_FUNCTIONAL",
