@@ -619,7 +619,9 @@ const District = require(
 const requireDatabaseReady = require(
   "../../middleWare/requireDatabaseReady",
 );
-
+const WaterPointAssessment = require(
+  "../../modules/waterPoint/waterPointAssessmentModel",
+);
 /* =========================================================
    PUBLIC LABELS
    ========================================================= */
@@ -1767,6 +1769,421 @@ router.get(
       res.status(503).json({
         message:
           "Public water infrastructure data is temporarily unavailable.",
+      });
+    }
+  },
+);
+
+/* =========================================================
+   PUBLIC WATER SOURCE ASSESSMENTS
+   GET /api/public/water-infrastructure/assessments
+
+   Public-safe assessment information only.
+
+   NOT PUBLIC:
+   - conditionNotes
+   - photos
+   - assessedByName
+   - createdBy
+   - internal audit information
+   ========================================================= */
+
+router.get(
+  "/water-infrastructure/assessments",
+  requireDatabaseReady,
+  async (_req, res) => {
+    try {
+      /*
+       * Only assessments connected to
+       * currently active Water Sources
+       * should appear publicly.
+       */
+
+      const activeWaterSources =
+        await WaterPoint.find({
+          isActive: true,
+        })
+          .select(
+            "_id waterPointCode waterSourceType region district villageOrSite",
+          )
+          .populate(
+            "region",
+            "name",
+          )
+          .populate(
+            "district",
+            "name",
+          )
+          .lean()
+          .maxTimeMS(10000);
+
+      const sourceIds =
+        activeWaterSources.map(
+          (source) => source._id,
+        );
+
+      /*
+       * Create a safe lookup map.
+       */
+      const sourceMap =
+        new Map(
+          activeWaterSources.map(
+            (source) => [
+              String(
+                source._id,
+              ),
+
+              {
+                code:
+                  source.waterPointCode,
+
+                type:
+                  labels[
+                    source
+                      .waterSourceType
+                  ] ||
+                  "Unknown",
+
+                region:
+                  source.region
+                    ?.name ||
+                  "Unknown",
+
+                district:
+                  source.district
+                    ?.name ||
+                  "Unknown",
+
+                village:
+                  source
+                    .villageOrSite ||
+                  "",
+              },
+            ],
+          ),
+        );
+
+      /*
+       * Fetch only fields that are
+       * explicitly approved for
+       * public use.
+       */
+      const assessments =
+        await WaterPointAssessment.find(
+          {
+            waterPoint: {
+              $in: sourceIds,
+            },
+          },
+        )
+          .select(
+            [
+              "waterPoint",
+              "assessmentDate",
+              "status",
+              "waterQuality",
+              "yieldValue",
+              "yieldUnit",
+              "maintenanceRequired",
+            ].join(" "),
+          )
+          .sort({
+            assessmentDate: -1,
+            _id: -1,
+          })
+          .lean()
+          .maxTimeMS(
+            10000,
+          );
+
+      /*
+       * Summary information
+       */
+      const statusCounts = {
+        FUNCTIONAL: 0,
+        NON_FUNCTIONAL: 0,
+        UNDER_MAINTENANCE: 0,
+        PARTIALLY_FUNCTIONAL: 0,
+        ABANDONED: 0,
+        UNKNOWN: 0,
+      };
+
+      const qualityCounts = {};
+
+      let maintenanceRequired =
+        0;
+
+      const assessedSources =
+        new Set();
+
+      for (
+        const assessment of
+        assessments
+      ) {
+        assessedSources.add(
+          String(
+            assessment.waterPoint,
+          ),
+        );
+
+        if (
+          Object.prototype.hasOwnProperty.call(
+            statusCounts,
+            assessment.status,
+          )
+        ) {
+          statusCounts[
+            assessment.status
+          ] += 1;
+        }
+
+        if (
+          assessment.waterQuality
+        ) {
+          qualityCounts[
+            assessment.waterQuality
+          ] =
+            (qualityCounts[
+              assessment.waterQuality
+            ] || 0) + 1;
+        }
+
+        if (
+          assessment.maintenanceRequired ===
+          true
+        ) {
+          maintenanceRequired +=
+            1;
+        }
+      }
+
+      /*
+       * Regional coverage.
+       *
+       * Each Water Source is counted
+       * once if it has at least one
+       * assessment.
+       */
+      const regionCoverageMap =
+        new Map();
+
+      for (
+        const sourceId of
+        assessedSources
+      ) {
+        const source =
+          sourceMap.get(
+            sourceId,
+          );
+
+        if (!source) {
+          continue;
+        }
+
+        const region =
+          source.region ||
+          "Unknown";
+
+        regionCoverageMap.set(
+          region,
+          (regionCoverageMap.get(
+            region,
+          ) || 0) + 1,
+        );
+      }
+
+      const regions =
+        Array.from(
+          regionCoverageMap.entries(),
+        )
+          .map(
+            ([
+              name,
+              count,
+            ]) => ({
+              name,
+              count,
+            }),
+          )
+          .sort(
+            (a, b) =>
+              b.count -
+                a.count ||
+              a.name.localeCompare(
+                b.name,
+              ),
+          );
+
+      /*
+       * Water Source Type coverage.
+       *
+       * Again, one source is counted
+       * once regardless of how many
+       * assessments it has.
+       */
+      const typeCoverageMap =
+        new Map();
+
+      for (
+        const sourceId of
+        assessedSources
+      ) {
+        const source =
+          sourceMap.get(
+            sourceId,
+          );
+
+        if (!source) {
+          continue;
+        }
+
+        const type =
+          source.type ||
+          "Unknown";
+
+        typeCoverageMap.set(
+          type,
+          (typeCoverageMap.get(
+            type,
+          ) || 0) + 1,
+        );
+      }
+
+      const sourceTypes =
+        Array.from(
+          typeCoverageMap.entries(),
+        )
+          .map(
+            ([
+              name,
+              count,
+            ]) => ({
+              name,
+              count,
+            }),
+          )
+          .sort(
+            (a, b) =>
+              b.count -
+                a.count ||
+              a.name.localeCompare(
+                b.name,
+              ),
+          );
+
+      /*
+       * Public recent assessments.
+       *
+       * Limit the public response to
+       * the 12 most recent records.
+       */
+      const recent =
+        assessments
+          .slice(0, 12)
+          .map(
+            (
+              assessment,
+            ) => {
+              const source =
+                sourceMap.get(
+                  String(
+                    assessment.waterPoint,
+                  ),
+                );
+
+              if (!source) {
+                return null;
+              }
+
+              return {
+                source,
+
+                assessmentDate:
+                  assessment.assessmentDate,
+
+                status:
+                  labels[
+                    assessment.status
+                  ] ||
+                  "Unknown",
+
+                waterQuality:
+                  assessment.waterQuality ||
+                  null,
+
+                yield:
+                  assessment.yieldValue !=
+                  null
+                    ? {
+                        value:
+                          assessment.yieldValue,
+
+                        unit:
+                          assessment.yieldUnit ||
+                          null,
+                      }
+                    : null,
+
+                maintenanceRequired:
+                  Boolean(
+                    assessment.maintenanceRequired,
+                  ),
+              };
+            },
+          )
+          .filter(Boolean);
+
+      /*
+       * Latest assessment date.
+       */
+      const latestAssessment =
+        assessments.length
+          ? assessments[0]
+              .assessmentDate
+          : null;
+
+      res
+        .set(
+          "Cache-Control",
+          "no-store",
+        )
+        .json({
+          public: true,
+
+          summary: {
+            totalAssessments:
+              assessments.length,
+
+            sourcesAssessed:
+              assessedSources.size,
+
+            maintenanceRequired,
+
+            latestAssessment,
+          },
+
+          statuses:
+            statusCounts,
+
+          waterQuality:
+            qualityCounts,
+
+          coverage: {
+            regions,
+            sourceTypes,
+          },
+
+          recent,
+        });
+    } catch (error) {
+      console.error(
+        "Public water source assessments error:",
+        error,
+      );
+
+      res.status(503).json({
+        message:
+          "Public water source assessment data is temporarily unavailable.",
       });
     }
   },
