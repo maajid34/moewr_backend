@@ -173,6 +173,9 @@ const assetRoutes = require("./Router/assetRoutes/assetRoutes.js");
 const sumaryRoutes = require("./Router/summaryRouter/summaryRouter.js");
 const attendanceRouter = require("./Router/staffRouter/attendanceRoutes.js");
 const employeRouter = require("./Router/staffRouter/employeeRoutes.js");
+const analyticsRoutes = require(
+  "./Router/analytics/analyticsRoutes",
+);
 
 const app = express();
 
@@ -226,6 +229,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 startDatabase(mongoose, databaseUri);
 // Apply to every database route, including projects, registry, staff and uploads.
 app.use(require('./middleWare/requireDatabaseReady'));
+app.use(
+  "/api",
+  analyticsRoutes,
+);
 app.use('/api/public', require('./Router/waterPoint/publicWaterRoutes'));
 // Registry owns its authentication and bounded parsers.
 app.use("/api/water-registry", require("./Router/waterPoint/waterPointRoutes"));
