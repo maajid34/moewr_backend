@@ -2,22 +2,66 @@
 
 
 
-// module.exports ={createAdmin ,AminLogin}
+// // module.exports ={createAdmin ,AminLogin}
 
-const customerModel = require("../../modules/login/login");
-const bcryptjs = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+// const customerModel = require("../../modules/login/login");
+// const bcryptjs = require("bcryptjs");
+// const jwt = require("jsonwebtoken");
 
-// // ✅ Create a new account (user or admin)
+// // // ✅ Create a new account (user or admin)
+// // const createAdmin = async (req, res) => {
+// //   try {
+// //     const name = String(req.body.name ?? req.body.Name ?? "").trim();
+// //     const email = String(req.body.email ?? req.body.Email ?? "").trim().toLowerCase();
+// //     const password = String(req.body.password ?? req.body.Password ?? "");
+// //     const role = req.body.role === "admin" ? "admin" : "user"; // default = user
+
+// //     if (!email || !password) {
+// //       return res.status(400).json({ message: "Email and password are required" });
+// //     }
+
+// //     const exist = await customerModel.findOne({ email });
+// //     if (exist) {
+// //       return res.status(409).json({ message: "Email already exists" });
+// //     }
+
+// //     const hash = await bcryptjs.hash(password, 10);
+
+// //     const user = await customerModel.create({
+// //       name: name || "User",
+// //       email,
+// //       password: hash,
+// //       role,
+// //     });
+
+// //     res.status(201).json({
+// //       message: "Account created successfully",
+// //       user: {
+// //         id: user._id,
+// //         name: user.name,
+// //         email: user.email,
+// //         role: user.role,
+// //       },
+// //     });
+// //   } catch (error) {
+// //     console.error("REGISTER ERROR:", error);
+// //     res.status(500).json({ message: "Server error" });
+// //   }
+// // };
+
 // const createAdmin = async (req, res) => {
 //   try {
-//     const name = String(req.body.name ?? req.body.Name ?? "").trim();
-//     const email = String(req.body.email ?? req.body.Email ?? "").trim().toLowerCase();
-//     const password = String(req.body.password ?? req.body.Password ?? "");
-//     const role = req.body.role === "admin" ? "admin" : "user"; // default = user
+//     const name = String(req.body.name ?? "").trim();
+//     const email = String(req.body.email ?? "").trim().toLowerCase();
+//     const password = String(req.body.password ?? "");
+
+//     const allowedRoles = ["admin", "energy", "water","admin/hr"];
+//     const role = allowedRoles.includes(req.body.role)
+//       ? req.body.role
+//       : "energy";
 
 //     if (!email || !password) {
-//       return res.status(400).json({ message: "Email and password are required" });
+//       return res.status(400).json({ message: "Email and password required" });
 //     }
 
 //     const exist = await customerModel.findOne({ email });
@@ -35,156 +79,686 @@ const jwt = require("jsonwebtoken");
 //     });
 
 //     res.status(201).json({
-//       message: "Account created successfully",
+//       message: "Account created",
+//       user: { _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role },
+//     });
+
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+
+
+
+
+
+// const AminLogin = async (req, res) => {
+//   try {
+//     const email = String(req.body.email ?? req.body.Email ?? "")
+//       .trim()
+//       .toLowerCase();
+//     const password = String(req.body.password ?? req.body.Password ?? "");
+
+//     if (!email || !password) {
+//       return res.status(400).json({ message: "Email and Password are required" });
+//     }
+
+//     const user = await customerModel.findOne({ email });
+//     if (!user) return res.status(401).json({ message: "Invalid Email or Password" });
+
+//     const ok = await bcryptjs.compare(password, user.password);
+//     if (!ok) return res.status(401).json({ message: "Invalid Email or Password" });
+
+//     // ⭐ FIXED — Check for secret
+//     const secret = process.env.JWT_Secret;
+//     if (!secret) {
+//       console.error("❌ JWT_SECRET missing!");
+//       return res.status(500).json({ message: "Server config error" });
+//     }
+
+//     // ⭐ Create Token
+//     const token = jwt.sign(
+//       { id: user._id, name: user.name, email: user.email, role: user.role },
+//       secret,
+//       { expiresIn: "1h" }
+//     );
+
+//     res.json({
+//       message: "Login successful",
 //       user: {
 //         id: user._id,
 //         name: user.name,
 //         email: user.email,
 //         role: user.role,
 //       },
+//       token,
 //     });
+
 //   } catch (error) {
-//     console.error("REGISTER ERROR:", error);
+//     console.error("LOGIN ERROR:", error);
 //     res.status(500).json({ message: "Server error" });
 //   }
 // };
 
+// const getUsers = async (req, res) => {
+//   try {
+//     const users = await customerModel.find().select("-password");
+//     res.json(users);
+//   } catch (error) {
+//     res.status(500).json({ message: "Error fetching users" });
+//   }
+// };
+
+// const deleteUser = async (req, res) => {
+//   try {
+//     await customerModel.findByIdAndDelete(req.params.id);
+//     res.json({ message: "User deleted" });
+//   } catch (error) {
+//     res.status(500).json({ message: "Delete failed" });
+//   }
+// };
+
+
+// const updateUser = async (req, res) => {
+//   try {
+//     const { name, email, role, password } = req.body;
+
+//     let updateData = { name, email, role };
+
+//     // ✅ ONLY update password if user typed new one
+//     if (password && password.trim() !== "") {
+//       const hash = await bcryptjs.hash(password, 10);
+//       updateData.password = hash;
+//     }
+
+//     const user = await customerModel.findByIdAndUpdate(
+//       req.params.id,
+//       updateData,
+//       { new: true, runValidators: true }
+//     );
+
+//     if (!user) return res.status(404).json({ message: "User not found" });
+//     res.json({ message: "User updated", user: { _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role } });
+
+//   } catch (error) {
+//     res.status(500).json({ message: "Update failed" });
+//   }
+// };
+
+// module.exports = { createAdmin, AminLogin,getUsers,deleteUser,updateUser };
+
+
+const customerModel = require("../../modules/login/login");
+const bcryptjs = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+/*
+|--------------------------------------------------------------------------
+| ALLOWED ACCOUNT ROLES
+|--------------------------------------------------------------------------
+*/
+
+const ALLOWED_ROLES = [
+  "admin",
+  "energy",
+  "water",
+  "admin/hr",
+  "water_assessor",
+];
+
+/*
+|--------------------------------------------------------------------------
+| CREATE ACCOUNT
+|--------------------------------------------------------------------------
+*/
+
 const createAdmin = async (req, res) => {
   try {
-    const name = String(req.body.name ?? "").trim();
-    const email = String(req.body.email ?? "").trim().toLowerCase();
-    const password = String(req.body.password ?? "");
+    const name = String(
+      req.body.name ?? "",
+    ).trim();
 
-    const allowedRoles = ["admin", "energy", "water","admin/hr"];
-    const role = allowedRoles.includes(req.body.role)
-      ? req.body.role
-      : "energy";
+    const email = String(
+      req.body.email ?? "",
+    )
+      .trim()
+      .toLowerCase();
+
+    const password = String(
+      req.body.password ?? "",
+    );
+
+    const requestedRole =
+      String(
+        req.body.role ?? "",
+      ).trim();
+
+    /*
+     * Keep existing default behaviour.
+     */
+    const role =
+      ALLOWED_ROLES.includes(
+        requestedRole,
+      )
+        ? requestedRole
+        : "energy";
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Email and password required",
+        });
     }
 
-    const exist = await customerModel.findOne({ email });
+    const exist =
+      await customerModel.findOne({
+        email,
+      });
+
     if (exist) {
-      return res.status(409).json({ message: "Email already exists" });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message:
+            "Email already exists",
+        });
     }
 
-    const hash = await bcryptjs.hash(password, 10);
+    const hash =
+      await bcryptjs.hash(
+        password,
+        10,
+      );
 
-    const user = await customerModel.create({
-      name: name || "User",
-      email,
-      password: hash,
-      role,
-    });
+    const user =
+      await customerModel.create({
+        name:
+          name || "User",
 
-    res.status(201).json({
-      message: "Account created",
-      user: { _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role },
-    });
+        email,
 
+        password: hash,
+
+        role,
+      });
+
+    return res
+      .status(201)
+      .json({
+        success: true,
+
+        message:
+          "Account created",
+
+        user: {
+          _id: user._id,
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error(
+      "REGISTER ERROR:",
+      error,
+    );
+
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message:
+          "Server error",
+      });
   }
 };
 
+/*
+|--------------------------------------------------------------------------
+| LOGIN
+|--------------------------------------------------------------------------
+|
+| water_assessor uses the SAME secure authentication
+| system as all other staff accounts.
+|
+*/
 
-
-
-
-
-const AminLogin = async (req, res) => {
+const AminLogin = async (
+  req,
+  res,
+) => {
   try {
-    const email = String(req.body.email ?? req.body.Email ?? "")
+    const email = String(
+      req.body.email ??
+        req.body.Email ??
+        "",
+    )
       .trim()
       .toLowerCase();
-    const password = String(req.body.password ?? req.body.Password ?? "");
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and Password are required" });
-    }
-
-    const user = await customerModel.findOne({ email });
-    if (!user) return res.status(401).json({ message: "Invalid Email or Password" });
-
-    const ok = await bcryptjs.compare(password, user.password);
-    if (!ok) return res.status(401).json({ message: "Invalid Email or Password" });
-
-    // ⭐ FIXED — Check for secret
-    const secret = process.env.JWT_Secret;
-    if (!secret) {
-      console.error("❌ JWT_SECRET missing!");
-      return res.status(500).json({ message: "Server config error" });
-    }
-
-    // ⭐ Create Token
-    const token = jwt.sign(
-      { id: user._id, name: user.name, email: user.email, role: user.role },
-      secret,
-      { expiresIn: "1h" }
+    const password = String(
+      req.body.password ??
+        req.body.Password ??
+        "",
     );
 
-    res.json({
-      message: "Login successful",
+    if (
+      !email ||
+      !password
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Email and Password are required",
+        });
+    }
+
+    const user =
+      await customerModel.findOne({
+        email,
+      });
+
+    if (!user) {
+      return res
+        .status(401)
+        .json({
+          success: false,
+          message:
+            "Invalid Email or Password",
+        });
+    }
+
+    const ok =
+      await bcryptjs.compare(
+        password,
+        user.password,
+      );
+
+    if (!ok) {
+      return res
+        .status(401)
+        .json({
+          success: false,
+          message:
+            "Invalid Email or Password",
+        });
+    }
+
+    const secret =
+      process.env.JWT_Secret;
+
+    if (!secret) {
+      console.error(
+        "JWT_Secret missing!",
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          message:
+            "Server config error",
+        });
+    }
+
+    const token =
+      jwt.sign(
+        {
+          id:
+            user._id.toString(),
+
+          name:
+            user.name,
+
+          email:
+            user.email,
+
+          role:
+            user.role,
+        },
+
+        secret,
+
+        {
+          expiresIn: "1h",
+          algorithm: "HS256",
+        },
+      );
+
+    return res.json({
+      success: true,
+
+      message:
+        "Login successful",
+
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
       },
+
       token,
     });
-
   } catch (error) {
-    console.error("LOGIN ERROR:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-const getUsers = async (req, res) => {
-  try {
-    const users = await customerModel.find().select("-password");
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching users" });
-  }
-};
-
-const deleteUser = async (req, res) => {
-  try {
-    await customerModel.findByIdAndDelete(req.params.id);
-    res.json({ message: "User deleted" });
-  } catch (error) {
-    res.status(500).json({ message: "Delete failed" });
-  }
-};
-
-
-const updateUser = async (req, res) => {
-  try {
-    const { name, email, role, password } = req.body;
-
-    let updateData = { name, email, role };
-
-    // ✅ ONLY update password if user typed new one
-    if (password && password.trim() !== "") {
-      const hash = await bcryptjs.hash(password, 10);
-      updateData.password = hash;
-    }
-
-    const user = await customerModel.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
+    console.error(
+      "LOGIN ERROR:",
+      error,
     );
 
-    if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ message: "User updated", user: { _id: user._id, id: user._id, name: user.name, email: user.email, role: user.role } });
-
-  } catch (error) {
-    res.status(500).json({ message: "Update failed" });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message:
+          "Server error",
+      });
   }
 };
 
-module.exports = { createAdmin, AminLogin,getUsers,deleteUser,updateUser };
+/*
+|--------------------------------------------------------------------------
+| GET USERS
+|--------------------------------------------------------------------------
+*/
+
+const getUsers = async (
+  req,
+  res,
+) => {
+  try {
+    const users =
+      await customerModel
+        .find()
+        .select("-password")
+        .sort({
+          createdAt: -1,
+        });
+
+    return res.json(
+      users,
+    );
+  } catch (error) {
+    console.error(
+      "GET USERS ERROR:",
+      error,
+    );
+
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message:
+          "Error fetching users",
+      });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| DELETE USER
+|--------------------------------------------------------------------------
+*/
+
+const deleteUser = async (
+  req,
+  res,
+) => {
+  try {
+    const user =
+      await customerModel.findByIdAndDelete(
+        req.params.id,
+      );
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message:
+            "User not found",
+        });
+    }
+
+    return res.json({
+      success: true,
+      message:
+        "User deleted",
+    });
+  } catch (error) {
+    console.error(
+      "DELETE USER ERROR:",
+      error,
+    );
+
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message:
+          "Delete failed",
+      });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| UPDATE USER
+|--------------------------------------------------------------------------
+*/
+
+const updateUser = async (
+  req,
+  res,
+) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+    } = req.body;
+
+    const updateData = {};
+
+    /*
+     * Name
+     */
+    if (
+      name !== undefined
+    ) {
+      const cleanName =
+        String(name).trim();
+
+      if (!cleanName) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Name cannot be empty",
+          });
+      }
+
+      updateData.name =
+        cleanName;
+    }
+
+    /*
+     * Email
+     */
+    if (
+      email !== undefined
+    ) {
+      const cleanEmail =
+        String(email)
+          .trim()
+          .toLowerCase();
+
+      if (!cleanEmail) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message:
+              "Email cannot be empty",
+          });
+      }
+
+      const existing =
+        await customerModel.findOne({
+          email: cleanEmail,
+
+          _id: {
+            $ne:
+              req.params.id,
+          },
+        });
+
+      if (existing) {
+        return res
+          .status(409)
+          .json({
+            success: false,
+            message:
+              "Email already exists",
+          });
+      }
+
+      updateData.email =
+        cleanEmail;
+    }
+
+    /*
+     * Role
+     */
+    if (
+      req.body.role !==
+      undefined
+    ) {
+      const role =
+        String(
+          req.body.role,
+        ).trim();
+
+      if (
+        !ALLOWED_ROLES.includes(
+          role,
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            message:
+              "Invalid account role",
+
+            allowedRoles:
+              ALLOWED_ROLES,
+          });
+      }
+
+      updateData.role =
+        role;
+    }
+
+    /*
+     * Password
+     *
+     * Only replace password when an actual
+     * new password has been supplied.
+     */
+    if (
+      password &&
+      String(password).trim() !==
+        ""
+    ) {
+      updateData.password =
+        await bcryptjs.hash(
+          String(password),
+          10,
+        );
+    }
+
+    if (
+      Object.keys(
+        updateData,
+      ).length === 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "No changes supplied",
+        });
+    }
+
+    const user =
+      await customerModel.findByIdAndUpdate(
+        req.params.id,
+
+        updateData,
+
+        {
+          new: true,
+          runValidators: true,
+        },
+      );
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message:
+            "User not found",
+        });
+    }
+
+    return res.json({
+      success: true,
+
+      message:
+        "User updated",
+
+      user: {
+        _id: user._id,
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "UPDATE USER ERROR:",
+      error,
+    );
+
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message:
+          "Update failed",
+      });
+  }
+};
+
+module.exports = {
+  createAdmin,
+  AminLogin,
+  getUsers,
+  deleteUser,
+  updateUser,
+};
