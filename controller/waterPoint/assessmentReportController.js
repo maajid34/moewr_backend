@@ -774,6 +774,174 @@ exports.list = async (
 |--------------------------------------------------------------------------
 */
 
+// exports.summary = async (
+//   req,
+//   res,
+// ) => {
+//   const q =
+//     req.registryQuery;
+
+//   const match =
+//     await buildMatch(q);
+
+//   const [result] =
+//     await Assessment.aggregate([
+//       {
+//         $match: match,
+//       },
+
+//       {
+//         $facet: {
+//           total: [
+//             {
+//               $count: "count",
+//             },
+//           ],
+
+//           riskCategories: [
+//             {
+//               $group: {
+//                 _id:
+//                   "$riskCategory",
+
+//                 count: {
+//                   $sum: 1,
+//                 },
+//               },
+//             },
+//           ],
+
+//           operationalStatuses: [
+//             {
+//               $group: {
+//                 _id:
+//                   "$status",
+
+//                 count: {
+//                   $sum: 1,
+//                 },
+//               },
+//             },
+//           ],
+
+//           actionStatuses: [
+//             {
+//               $group: {
+//                 _id:
+//                   "$actionStatus",
+
+//                 count: {
+//                   $sum: 1,
+//                 },
+//               },
+//             },
+//           ],
+
+//           estimatedCost: [
+//             {
+//               $group: {
+//                 _id: null,
+
+//                 total: {
+//                   $sum: {
+//                     $ifNull: [
+//                       "$estimatedCostUSD",
+//                       0,
+//                     ],
+//                   },
+//                 },
+//               },
+//             },
+//           ],
+
+//           population: [
+//             {
+//               $group: {
+//                 _id: null,
+
+//                 populationServed:
+//                   {
+//                     $sum: {
+//                       $ifNull: [
+//                         "$estimatedPopulationServed",
+//                         0,
+//                       ],
+//                     },
+//                   },
+
+//                 householdsServed:
+//                   {
+//                     $sum: {
+//                       $ifNull: [
+//                         "$estimatedHouseholdsServed",
+//                         0,
+//                       ],
+//                     },
+//                   },
+//               },
+//             },
+//           ],
+//         },
+//       },
+//     ]).option({
+//       maxTimeMS: 10000,
+//     });
+
+//   const toObject = (
+//     rows,
+//   ) =>
+//     Object.fromEntries(
+//       rows
+//         .filter(
+//           (row) => row._id,
+//         )
+//         .map((row) => [
+//           row._id,
+//           row.count,
+//         ]),
+//     );
+
+//   send(
+//     res,
+//     {
+//       totalAssessments:
+//         result.total[0]
+//           ?.count || 0,
+
+//       riskCategories:
+//         toObject(
+//           result.riskCategories,
+//         ),
+
+//       operationalStatuses:
+//         toObject(
+//           result.operationalStatuses,
+//         ),
+
+//       actionStatuses:
+//         toObject(
+//           result.actionStatuses,
+//         ),
+
+//       estimatedCostUSD:
+//         result.estimatedCost[0]
+//           ?.total || 0,
+
+//       estimatedPopulationServed:
+//         result.population[0]
+//           ?.populationServed ||
+//         0,
+
+//       estimatedHouseholdsServed:
+//         result.population[0]
+//           ?.householdsServed ||
+//         0,
+//     },
+
+//     "Assessment report summary",
+//   );
+// };
+
 exports.summary = async (
   req,
   res,
@@ -792,11 +960,19 @@ exports.summary = async (
 
       {
         $facet: {
+          /* ================================================================
+             TOTAL
+          ================================================================ */
+
           total: [
             {
               $count: "count",
             },
           ],
+
+          /* ================================================================
+             RISK CATEGORY
+          ================================================================ */
 
           riskCategories: [
             {
@@ -811,6 +987,10 @@ exports.summary = async (
             },
           ],
 
+          /* ================================================================
+             OPERATIONAL STATUS
+          ================================================================ */
+
           operationalStatuses: [
             {
               $group: {
@@ -824,6 +1004,146 @@ exports.summary = async (
             },
           ],
 
+          /* ================================================================
+             WATER QUALITY
+          ================================================================ */
+
+          waterQuality: [
+            {
+              $group: {
+                _id:
+                  "$waterQuality",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             CHLORINATION STATUS
+          ================================================================ */
+
+          chlorinationStatuses: [
+            {
+              $group: {
+                _id:
+                  "$chlorinationStatus",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             CURRENT FLOOD EXPOSURE
+          ================================================================ */
+
+          floodExposure: [
+            {
+              $group: {
+                _id:
+                  "$currentFloodExposure",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             ACCESS RISK
+          ================================================================ */
+
+          accessRisk: [
+            {
+              $group: {
+                _id:
+                  "$accessRisk",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             CONTAMINATION RISK
+          ================================================================ */
+
+          contaminationRisk: [
+            {
+              $group: {
+                _id:
+                  "$contaminationRisk",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             STRUCTURAL CONDITION
+          ================================================================ */
+
+          structuralConditions: [
+            {
+              $group: {
+                _id:
+                  "$structuralProtectionCondition",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             ALTERNATIVE WATER SOURCE
+          ================================================================ */
+
+          alternativeWaterSources: [
+            {
+              $group: {
+                _id:
+                  "$alternativeWaterSourceAvailable",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             ACTION PRIORITY
+          ================================================================ */
+
+          actionPriorities: [
+            {
+              $group: {
+                _id:
+                  "$actionPriority",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             ACTION STATUS
+          ================================================================ */
+
           actionStatuses: [
             {
               $group: {
@@ -836,6 +1156,27 @@ exports.summary = async (
               },
             },
           ],
+
+          /* ================================================================
+             MAINTENANCE
+          ================================================================ */
+
+          maintenance: [
+            {
+              $group: {
+                _id:
+                  "$maintenanceRequired",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+          ],
+
+          /* ================================================================
+             COST
+          ================================================================ */
 
           estimatedCost: [
             {
@@ -854,31 +1195,69 @@ exports.summary = async (
             },
           ],
 
+          /* ================================================================
+             BENEFICIARIES
+          ================================================================ */
+
           population: [
             {
               $group: {
                 _id: null,
 
-                populationServed:
-                  {
-                    $sum: {
-                      $ifNull: [
-                        "$estimatedPopulationServed",
-                        0,
-                      ],
-                    },
+                populationServed: {
+                  $sum: {
+                    $ifNull: [
+                      "$estimatedPopulationServed",
+                      0,
+                    ],
                   },
+                },
 
-                householdsServed:
-                  {
-                    $sum: {
-                      $ifNull: [
-                        "$estimatedHouseholdsServed",
-                        0,
-                      ],
-                    },
+                householdsServed: {
+                  $sum: {
+                    $ifNull: [
+                      "$estimatedHouseholdsServed",
+                      0,
+                    ],
                   },
+                },
+
+                storageAvailableM3: {
+                  $sum: {
+                    $ifNull: [
+                      "$storageAvailableM3",
+                      0,
+                    ],
+                  },
+                },
               },
+            },
+          ],
+
+          /* ================================================================
+             ASSESSORS
+          ================================================================ */
+
+          assessors: [
+            {
+              $group: {
+                _id:
+                  "$createdBy",
+
+                count: {
+                  $sum: 1,
+                },
+              },
+            },
+
+            {
+              $sort: {
+                count: -1,
+              },
+            },
+
+            {
+              $limit: 10,
             },
           ],
         },
@@ -893,16 +1272,111 @@ exports.summary = async (
     Object.fromEntries(
       rows
         .filter(
-          (row) => row._id,
+          (row) =>
+            row._id !== null &&
+            row._id !== undefined,
         )
         .map((row) => [
-          row._id,
+          String(row._id),
           row.count,
         ]),
     );
 
+  /* ========================================================================
+     RESOLVE ASSESSOR NAMES
+  ======================================================================== */
+
+  const assessorIds =
+    result.assessors
+      .map(
+        (row) => row._id,
+      )
+      .filter(Boolean);
+
+  let assessorRows = [];
+
+  if (
+    assessorIds.length
+  ) {
+    const populated =
+      await Assessment.find({
+        createdBy: {
+          $in: assessorIds,
+        },
+      })
+        .select(
+          "createdBy",
+        )
+        .populate(
+          "createdBy",
+          "name email role",
+        )
+        .lean();
+
+    const userMap =
+      new Map();
+
+    populated.forEach(
+      (row) => {
+        const user =
+          row.createdBy;
+
+        if (
+          user?._id &&
+          !userMap.has(
+            String(
+              user._id,
+            ),
+          )
+        ) {
+          userMap.set(
+            String(
+              user._id,
+            ),
+            user,
+          );
+        }
+      },
+    );
+
+    assessorRows =
+      result.assessors.map(
+        (row) => {
+          const user =
+            userMap.get(
+              String(
+                row._id,
+              ),
+            );
+
+          return {
+            id:
+              String(
+                row._id,
+              ),
+
+            name:
+              user?.name ||
+              "Unknown Assessor",
+
+            email:
+              user?.email ||
+              "",
+
+            role:
+              user?.role ||
+              "",
+
+            assessments:
+              row.count,
+          };
+        },
+      );
+  }
+
   send(
     res,
+
     {
       totalAssessments:
         result.total[0]
@@ -918,10 +1392,64 @@ exports.summary = async (
           result.operationalStatuses,
         ),
 
+      waterQuality:
+        toObject(
+          result.waterQuality,
+        ),
+
+      chlorinationStatuses:
+        toObject(
+          result.chlorinationStatuses,
+        ),
+
+      floodExposure:
+        toObject(
+          result.floodExposure,
+        ),
+
+      accessRisk:
+        toObject(
+          result.accessRisk,
+        ),
+
+      contaminationRisk:
+        toObject(
+          result.contaminationRisk,
+        ),
+
+      structuralConditions:
+        toObject(
+          result.structuralConditions,
+        ),
+
+      alternativeWaterSources:
+        toObject(
+          result.alternativeWaterSources,
+        ),
+
+      actionPriorities:
+        toObject(
+          result.actionPriorities,
+        ),
+
       actionStatuses:
         toObject(
           result.actionStatuses,
         ),
+
+      maintenance: {
+        required:
+          result.maintenance.find(
+            (row) =>
+              row._id === true,
+          )?.count || 0,
+
+        notRequired:
+          result.maintenance.find(
+            (row) =>
+              row._id === false,
+          )?.count || 0,
+      },
 
       estimatedCostUSD:
         result.estimatedCost[0]
@@ -936,12 +1464,19 @@ exports.summary = async (
         result.population[0]
           ?.householdsServed ||
         0,
+
+      totalStorageAvailableM3:
+        result.population[0]
+          ?.storageAvailableM3 ||
+        0,
+
+      assessors:
+        assessorRows,
     },
 
     "Assessment report summary",
   );
 };
-
 /*
 |--------------------------------------------------------------------------
 | OFFICIAL 42-COLUMN CSV EXPORT
