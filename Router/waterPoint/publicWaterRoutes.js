@@ -4134,5 +4134,652 @@ router.get(
 |--------------------------------------------------------------------------
 */
 
+
+/* ==========================================================================
+   PUBLIC EL NIÑO REPORT
+   GET /api/public/water-infrastructure/el-nino-report
+
+   Anonymous + read-only.
+
+   Public-safe aggregated reporting only.
+   No assessor identity, evidence files, internal notes or audit data.
+========================================================================== */
+
+router.get(
+  "/water-infrastructure/el-nino-report",
+
+  requireDatabaseReady,
+
+  async (_req, res) => {
+    try {
+      /* ================================================================
+         ACTIVE WATER SOURCES
+      ================================================================ */
+
+      const activeWaterSources =
+        await WaterPoint.find({
+          isActive: true,
+        })
+          .select(
+            [
+              "_id",
+              "waterPointCode",
+              "waterPointName",
+              "waterSourceType",
+              "region",
+              "district",
+              "villageOrSite",
+              "status",
+            ].join(" "),
+          )
+          .populate(
+            "region",
+            "name",
+          )
+          .populate(
+            "district",
+            "name",
+          )
+          .lean()
+          .maxTimeMS(10000);
+
+      const sourceIds =
+        activeWaterSources.map(
+          (source) =>
+            source._id,
+        );
+
+      /* ================================================================
+         ALL PUBLIC-SAFE ASSESSMENT FIELDS
+      ================================================================ */
+
+      const assessments =
+        await WaterPointAssessment.find({
+          waterPoint: {
+            $in: sourceIds,
+          },
+        })
+          .select(
+            [
+              "waterPoint",
+              "assessmentDate",
+              "status",
+              "waterQuality",
+              "chlorinationStatus",
+              "yieldValue",
+              "yieldUnit",
+              "storageAvailableM3",
+              "estimatedPopulationServed",
+              "estimatedHouseholdsServed",
+              "maintenanceRequired",
+              "currentFloodExposure",
+              "accessRisk",
+              "contaminationRisk",
+              "structuralProtectionCondition",
+              "alternativeWaterSourceAvailable",
+              "likelihood",
+              "impact",
+              "riskScore",
+              "riskCategory",
+              "actionPriority",
+              "actionStatus",
+              "estimatedCostUSD",
+            ].join(" "),
+          )
+          .sort({
+            assessmentDate: -1,
+            _id: -1,
+          })
+          .lean()
+          .maxTimeMS(10000);
+
+      /* ================================================================
+         SOURCE LOOKUP
+      ================================================================ */
+
+      const sourceMap =
+        new Map(
+          activeWaterSources.map(
+            (source) => [
+              String(
+                source._id,
+              ),
+              source,
+            ],
+          ),
+        );
+
+      /* ================================================================
+         GENERIC COUNTER
+      ================================================================ */
+
+      const countBy = (
+        rows,
+        field,
+      ) => {
+        const result = {};
+
+        for (
+          const row of rows
+        ) {
+          const value =
+            row?.[field];
+
+          if (
+            value === null ||
+            value === undefined ||
+            value === ""
+          ) {
+            continue;
+          }
+
+          result[value] =
+            (result[value] ||
+              0) + 1;
+        }
+
+        return result;
+      };
+
+      /* ================================================================
+         TOTALS
+      ================================================================ */
+
+      let estimatedPopulationServed =
+        0;
+
+      let estimatedHouseholdsServed =
+        0;
+
+      let totalStorageAvailableM3 =
+        0;
+
+      let estimatedCostUSD =
+        0;
+
+      let maintenanceRequired =
+        0;
+
+      for (
+        const assessment of
+        assessments
+      ) {
+        estimatedPopulationServed +=
+          Number(
+            assessment
+              .estimatedPopulationServed ||
+              0,
+          );
+
+        estimatedHouseholdsServed +=
+          Number(
+            assessment
+              .estimatedHouseholdsServed ||
+              0,
+          );
+
+        totalStorageAvailableM3 +=
+          Number(
+            assessment
+              .storageAvailableM3 ||
+              0,
+          );
+
+        estimatedCostUSD +=
+          Number(
+            assessment
+              .estimatedCostUSD ||
+              0,
+          );
+
+        if (
+          assessment
+            .maintenanceRequired ===
+          true
+        ) {
+          maintenanceRequired +=
+            1;
+        }
+      }
+
+      /* ================================================================
+         ASSESSED SOURCES
+      ================================================================ */
+
+      const assessedSources =
+        new Set(
+          assessments.map(
+            (assessment) =>
+              String(
+                assessment.waterPoint,
+              ),
+          ),
+        );
+
+      /* ================================================================
+         LATEST ASSESSMENT PER SOURCE
+      ================================================================ */
+
+      const latestBySource =
+        new Map();
+
+      for (
+        const assessment of
+        assessments
+      ) {
+        const sourceId =
+          String(
+            assessment.waterPoint,
+          );
+
+        if (
+          !latestBySource.has(
+            sourceId,
+          )
+        ) {
+          latestBySource.set(
+            sourceId,
+            assessment,
+          );
+        }
+      }
+
+      const currentAssessments =
+        Array.from(
+          latestBySource.values(),
+        );
+
+      /* ================================================================
+         SOURCE TYPES
+      ================================================================ */
+
+      const sourceTypes = {
+        BOREHOLE: 0,
+        SHALLOW_WELL: 0,
+        BARKAD: 0,
+        WATER_PAN: 0,
+        WATER_KIOSK: 0,
+      };
+
+      for (
+        const source of
+        activeWaterSources
+      ) {
+        if (
+          Object.prototype.hasOwnProperty.call(
+            sourceTypes,
+            source.waterSourceType,
+          )
+        ) {
+          sourceTypes[
+            source.waterSourceType
+          ] += 1;
+        }
+      }
+
+      /* ================================================================
+         REGIONAL DISTRIBUTION
+      ================================================================ */
+
+      const regionMap =
+        new Map();
+
+      for (
+        const source of
+        activeWaterSources
+      ) {
+        const region =
+          source.region?.name ||
+          "Unknown";
+
+        if (
+          !regionMap.has(
+            region,
+          )
+        ) {
+          regionMap.set(
+            region,
+            {
+              name:
+                region,
+
+              totalWaterSources:
+                0,
+
+              boreholes:
+                0,
+
+              shallowWells:
+                0,
+
+              barkads:
+                0,
+
+              waterPans:
+                0,
+
+              waterKiosks:
+                0,
+            },
+          );
+        }
+
+        const row =
+          regionMap.get(
+            region,
+          );
+
+        row.totalWaterSources +=
+          1;
+
+        if (
+          source.waterSourceType ===
+          "BOREHOLE"
+        ) {
+          row.boreholes +=
+            1;
+        }
+
+        if (
+          source.waterSourceType ===
+          "SHALLOW_WELL"
+        ) {
+          row.shallowWells +=
+            1;
+        }
+
+        if (
+          source.waterSourceType ===
+          "BARKAD"
+        ) {
+          row.barkads +=
+            1;
+        }
+
+        if (
+          source.waterSourceType ===
+          "WATER_PAN"
+        ) {
+          row.waterPans +=
+            1;
+        }
+
+        if (
+          source.waterSourceType ===
+          "WATER_KIOSK"
+        ) {
+          row.waterKiosks +=
+            1;
+        }
+      }
+
+      const regions =
+        Array.from(
+          regionMap.values(),
+        ).sort(
+          (a, b) =>
+            b.totalWaterSources -
+              a.totalWaterSources ||
+            a.name.localeCompare(
+              b.name,
+            ),
+        );
+
+      /* ================================================================
+         RECENT PUBLIC ASSESSMENTS
+      ================================================================ */
+
+      const recent =
+        assessments
+          .slice(
+            0,
+            12,
+          )
+          .map(
+            (
+              assessment,
+            ) => {
+              const source =
+                sourceMap.get(
+                  String(
+                    assessment.waterPoint,
+                  ),
+                );
+
+              if (!source) {
+                return null;
+              }
+
+              return {
+                source: {
+                  code:
+                    source.waterPointCode,
+
+                  name:
+                    source.waterPointName ||
+                    "",
+
+                  type:
+                    publicLabel(
+                      source.waterSourceType,
+                    ),
+
+                  region:
+                    source.region?.name ||
+                    "Unknown",
+
+                  district:
+                    source.district
+                      ?.name ||
+                    "Unknown",
+
+                  village:
+                    source.villageOrSite ||
+                    "",
+                },
+
+                assessmentDate:
+                  assessment.assessmentDate,
+
+                status:
+                  assessment.status,
+
+                waterQuality:
+                  assessment.waterQuality,
+
+                chlorinationStatus:
+                  assessment.chlorinationStatus,
+
+                currentFloodExposure:
+                  assessment.currentFloodExposure,
+
+                riskScore:
+                  assessment.riskScore,
+
+                riskCategory:
+                  assessment.riskCategory,
+
+                actionPriority:
+                  assessment.actionPriority,
+
+                actionStatus:
+                  assessment.actionStatus,
+              };
+            },
+          )
+          .filter(Boolean);
+
+      /* ================================================================
+         RESPONSE
+      ================================================================ */
+
+      return res
+        .set(
+          "Cache-Control",
+          "no-store",
+        )
+        .json({
+          public: true,
+
+          report:
+            "El Niño Water Source & Assessment Report",
+
+          summary: {
+            totalWaterSources:
+              activeWaterSources.length,
+
+            totalAssessments:
+              assessments.length,
+
+            sourcesAssessed:
+              assessedSources.size,
+
+            sourcesNotAssessed:
+              Math.max(
+                0,
+                activeWaterSources.length -
+                  assessedSources.size,
+              ),
+
+            estimatedPopulationServed,
+
+            estimatedHouseholdsServed,
+
+            totalStorageAvailableM3,
+
+            estimatedCostUSD,
+
+            maintenanceRequired,
+
+            latestAssessment:
+              assessments[0]
+                ?.assessmentDate ||
+              null,
+          },
+
+          sourceTypes,
+
+          /*
+           * Current/latest condition only.
+           */
+          current: {
+            operationalStatuses:
+              countBy(
+                currentAssessments,
+                "status",
+              ),
+
+            riskCategories:
+              countBy(
+                currentAssessments,
+                "riskCategory",
+              ),
+
+            waterQuality:
+              countBy(
+                currentAssessments,
+                "waterQuality",
+              ),
+
+            chlorinationStatuses:
+              countBy(
+                currentAssessments,
+                "chlorinationStatus",
+              ),
+
+            floodExposure:
+              countBy(
+                currentAssessments,
+                "currentFloodExposure",
+              ),
+
+            accessRisk:
+              countBy(
+                currentAssessments,
+                "accessRisk",
+              ),
+
+            contaminationRisk:
+              countBy(
+                currentAssessments,
+                "contaminationRisk",
+              ),
+
+            structuralConditions:
+              countBy(
+                currentAssessments,
+                "structuralProtectionCondition",
+              ),
+
+            alternativeWaterSources:
+              countBy(
+                currentAssessments,
+                "alternativeWaterSourceAvailable",
+              ),
+
+            actionPriorities:
+              countBy(
+                currentAssessments,
+                "actionPriority",
+              ),
+
+            actionStatuses:
+              countBy(
+                currentAssessments,
+                "actionStatus",
+              ),
+          },
+
+          /*
+           * Historical assessment totals.
+           */
+          history: {
+            operationalStatuses:
+              countBy(
+                assessments,
+                "status",
+              ),
+
+            riskCategories:
+              countBy(
+                assessments,
+                "riskCategory",
+              ),
+
+            actionPriorities:
+              countBy(
+                assessments,
+                "actionPriority",
+              ),
+
+            actionStatuses:
+              countBy(
+                assessments,
+                "actionStatus",
+              ),
+          },
+
+          regions,
+
+          recent,
+        });
+    } catch (error) {
+      console.error(
+        "Public El Niño report error:",
+        error,
+      );
+
+      return res
+        .status(503)
+        .json({
+          public: true,
+
+          message:
+            "Public El Niño report data is temporarily unavailable.",
+        });
+    }
+  },
+);
+
 module.exports =
   router;
